@@ -76,7 +76,7 @@ When an error occurs, use appropriate exceptions:
 
 ```python
 from fastapi import HTTPException, status
-from uptotrial.api.errors import NotFoundError, ServiceError
+from app.api.errors import NotFoundError, ServiceError
 
 # For domain-specific errors
 if not user_found:

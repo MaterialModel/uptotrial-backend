@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from uptotrial.api.v1.endpoints import health
+from app.api.v1.endpoints import health
 
 api_router = APIRouter()
 

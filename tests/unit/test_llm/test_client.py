@@ -1,11 +1,12 @@
 """Tests for the Responses API client."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.uptotrial.api.errors import LLMError
-from src.uptotrial.core.config import Settings
-from src.uptotrial.infrastructure.llm.client import ResponsesClient
+import pytest
+
+from app.api.errors import LLMError
+from app.core.config import Settings
+from app.infrastructure.llm.client import ResponsesClient
 
 
 @pytest.fixture
@@ -22,13 +23,23 @@ def mock_settings() -> Settings:
 def mock_response() -> MagicMock:
     """Create a mock response from the OpenAI API."""
     response = MagicMock()
-    response.message.content = "This is a test response"
+    message = MagicMock()
+    message.content = "This is a test response"
+    message.role = "assistant"
+    message.tool_calls = None
+    message.function_call = None
+    response.message = message
     response.conversation_id = "test_conversation_id"
-    response.usage.dict.return_value = {
+    
+    # Mock the usage information
+    usage = MagicMock()
+    usage.dict.return_value = {
         "prompt_tokens": 10,
         "completion_tokens": 20,
         "total_tokens": 30,
     }
+    response.usage = usage
+    
     return response
 
 
@@ -46,9 +57,9 @@ async def test_create_response_success(mock_settings: Settings, mock_response: M
         result = await client.create_response("Test input")
         
         # Assert results
-        assert result["message"] == mock_response.message
-        assert result["conversation_id"] == "test_conversation_id"
-        assert "usage" in result
+        assert result.message.content == mock_response.message.content
+        assert result.conversation_id == "test_conversation_id"
+        assert result.usage is not None
         
         # Verify API was called with correct parameters
         mock_client.responses.create.assert_called_once()
@@ -91,11 +102,13 @@ async def test_search_clinical_trials(mock_settings: Settings, mock_response: Ma
         result = await client.search_clinical_trials("Find cancer trials")
         
         # Assert results
-        assert result["results"] == "This is a test response"
-        assert result["conversation_id"] == "test_conversation_id"
+        assert result.results == mock_response.message.content
+        assert result.conversation_id == "test_conversation_id"
         
         # Verify API call included tools and appropriate settings
         mock_client.responses.create.assert_called_once()
         call_args = mock_client.responses.create.call_args[1]
         assert "tools" in call_args
+        assert "search" in call_args["input"].lower()
+        assert "cancer trials" in call_args["input"].lower()
         assert call_args["temperature"] < 0.7  # Lower temperature for factual responses

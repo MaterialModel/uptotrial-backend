@@ -1,7 +1,7 @@
 """Database session management."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
-from uptotrial.core.config import get_settings
+from app.core.config import get_settings
 
 settings = get_settings()
 

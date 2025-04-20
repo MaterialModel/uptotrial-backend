@@ -4,19 +4,19 @@ import asyncio
 import os
 import sys
 from logging.config import fileConfig
+from pathlib import Path
 
-from alembic import context
-from alembic.config import Config
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
-# Add the src directory to the path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from alembic import context
 
-from src.uptotrial.core.config import get_settings  # noqa: E402
-from src.uptotrial.infrastructure.database.models import Base  # noqa: E402
+# Add the project directory to the path
+sys.path.insert(0, Path(__file__).parent.parent)
+
+from app.core.config import get_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -60,9 +60,8 @@ def confirm_migration(database_id: str) -> bool:
         print("\033[1;31m!!! WARNING: This is a PRODUCTION database !!!\033[0m")
         confirm = input("\nAre you ABSOLUTELY SURE you want to proceed? [y/N]: ")
         return confirm.lower() == "y"
-    else:
-        confirm = input("\nDo you want to proceed? [Y/n]: ")
-        return confirm.lower() != "n"
+    confirm = input("\nDo you want to proceed? [Y/n]: ")
+    return confirm.lower() != "n"
 
 
 def run_migrations_offline() -> None:

@@ -27,6 +27,8 @@ tox -e coverage
 tox -e specific -- tests/unit/test_middleware/test_correlation_id.py
 ```
 
+Note: All tox environments are configured in `pyproject.toml` and require Python 3.12.
+
 When database migrations are involved:
 
 ```bash
@@ -104,17 +106,17 @@ def get_user(id: Optional[int] = None) -> Optional[User]:
 
 When adding new components, place them in the appropriate directories:
 
-- API endpoints: `src/uptotrial/api/v1/endpoints/`
-- Domain models: `src/uptotrial/domain/models/`
-- Database models: `src/uptotrial/infrastructure/database/models/`
-- Services: `src/uptotrial/domain/services/`
-- LLM utilities: `src/uptotrial/infrastructure/llm/`
+- API endpoints: `app/api/v1/endpoints/`
+- Domain models: `app/domain/models/`
+- Database models: `app/infrastructure/database/models/`
+- Services: `app/domain/services/`
+- LLM utilities: `app/infrastructure/llm/`
 
 ## External Service Integration
 
 When working with the OpenAI Responses API:
 
-- Use the existing client in `src/uptotrial/infrastructure/llm/client.py`
+- Use the existing client in `app/infrastructure/llm/client.py`
 - Follow error handling patterns for API failures
 - Properly mock responses in tests
 - Consider rate limits and timeout settings
@@ -142,19 +144,19 @@ Requests are rate-limited both globally and per correlation ID:
 
 ### Error Handling
 
-- Use custom exception classes from `src/uptotrial/api/errors.py`
+- Use custom exception classes from `app/api/errors.py`
 - Return appropriate HTTP status codes
 - Include error details in the response
 - Log errors with correlation IDs
 
 ## Key Files for Understanding the Project
 
-- `src/uptotrial/app.py`: FastAPI application factory
-- `src/uptotrial/core/config.py`: Application configuration
-- `src/uptotrial/api/middleware.py`: Correlation ID and rate limiting
-- `src/uptotrial/infrastructure/llm/client.py`: OpenAI Responses API client
-- `src/uptotrial/api/deps.py`: Dependency injection
-- `src/uptotrial/infrastructure/database/session.py`: Database session management
+- `app/app.py`: FastAPI application factory
+- `app/core/config.py`: Application configuration
+- `app/api/middleware.py`: Correlation ID and rate limiting
+- `app/infrastructure/llm/client.py`: OpenAI Responses API client
+- `app/api/deps.py`: Dependency injection
+- `app/infrastructure/database/session.py`: Database session management
 
 ## Further Documentation
 

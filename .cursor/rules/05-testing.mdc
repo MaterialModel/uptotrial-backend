@@ -1,8 +1,3 @@
----
-description: Testing guidelines and practices
-type: ContextSpecific
----
-
 # Testing Guidelines
 
 UpToTrial uses pytest for testing, orchestrated through tox. Follow these guidelines when writing or modifying tests.
@@ -174,7 +169,7 @@ For integration tests:
 Always use tox to run tests, not pytest directly. Tox ensures consistent test environments and workflows:
 
 ```bash
-# Run all tests (default Python environment)
+# Run all tests with Python 3.12
 tox
 
 # Run only linting
@@ -193,10 +188,13 @@ tox -e specific -- tests/unit/test_middleware/test_correlation_id.py -v
 tox -e specific -- -m "asyncio"
 
 # Combination of specific file and flags
-tox -e specific -- tests/unit/test_llm --cov=src.uptotrial.infrastructure.llm
+tox -e specific -- tests/unit/test_llm --cov=app.infrastructure.llm
+
+# Using python -m syntax (alternative)
+python -m tox -e lint
 ```
 
-The project's tox.ini provides several environments:
+The project's tox configuration is in the `pyproject.toml` file under the `[tool.tox]` section and provides several environments, all using Python 3.12:
 - `py312`: Run tests with Python 3.12
 - `lint`: Run linting with ruff
 - `typecheck`: Run type checking with mypy

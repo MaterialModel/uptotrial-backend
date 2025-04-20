@@ -9,11 +9,11 @@ UpToTrial integrates with OpenAI's Responses API for natural language understand
 
 ## Using the Responses Client
 
-Always use the existing `ResponsesClient` from `src/uptotrial/infrastructure/llm/client.py`:
+Always use the existing `ResponsesClient` from `app/infrastructure/llm/client.py`:
 
 ```python
-from uptotrial.infrastructure.llm.client import ResponsesClient
-from uptotrial.core.config import get_settings
+from app.infrastructure.llm.client import ResponsesClient
+from app.core.config import get_settings
 
 # Initialization
 settings = get_settings()
@@ -37,7 +37,7 @@ search_results = await client.search_clinical_trials(
 Always handle potential LLM errors gracefully:
 
 ```python
-from uptotrial.api.errors import LLMError
+from app.api.errors import LLMError
 
 try:
     response = await client.create_response(input_text=query)
@@ -67,7 +67,7 @@ def mock_llm_response():
 @pytest.mark.asyncio
 async def test_search_service(mock_llm_response):
     """Test search service with mocked LLM."""
-    with patch("uptotrial.infrastructure.llm.client.ResponsesClient.create_response") as mock_create:
+    with patch("app.infrastructure.llm.client.ResponsesClient.create_response") as mock_create:
         mock_create.return_value = mock_llm_response
         service = SearchService()
         result = await service.search("test query")

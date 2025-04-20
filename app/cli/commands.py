@@ -1,14 +1,12 @@
 """CLI commands for the UpToTrial application."""
 
-import sys
-from typing import Optional
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from uptotrial import __version__
-from uptotrial.core.config import get_settings
+from app import __version__
+from app.core.config import get_settings
 
 # Create Typer app
 app = typer.Typer(
@@ -22,13 +20,13 @@ console = Console()
 
 
 @app.command()
-def version():
+def version() -> None:
     """Display the current version of the UpToTrial CLI."""
     console.print(f"UpToTrial CLI v{__version__}")
 
 
 @app.command()
-def config():
+def config() -> None:
     """Display the current configuration."""
     settings = get_settings()
     
@@ -50,7 +48,7 @@ def config():
 def search(
     query: str = typer.Argument(..., help="Natural language query for clinical trials"),
     limit: int = typer.Option(10, "--limit", "-l", help="Maximum number of results to return"),
-):
+) -> None:
     """Search for clinical trials using natural language.
     
     Args:

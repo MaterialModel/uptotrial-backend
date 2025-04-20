@@ -34,7 +34,7 @@ The API handles multiple types of input and output:
 
 ### ResponsesClient Class
 
-The `ResponsesClient` class in `infrastructure/llm/client.py` provides a clean interface to the Responses API:
+The `ResponsesClient` class in `app/infrastructure/llm/client.py` provides a clean interface to the Responses API:
 
 ```python
 async def create_response(

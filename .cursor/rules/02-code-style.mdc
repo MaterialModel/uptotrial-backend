@@ -48,8 +48,8 @@ from pydantic import BaseModel
 from sqlmodel import Field, SQLModel
 
 # Local modules
-from uptotrial.core.config import get_settings
-from uptotrial.domain.models import User
+from app.core.config import get_settings
+from app.domain.models import User
 ```
 
 - **No wildcard imports**: Always import specific components
@@ -95,7 +95,7 @@ def calculate_risk_score(patient_data: dict[str, any], model_type: str = "standa
 ## Error Handling
 
 - Use structured exception handling
-- Create and use custom exception classes from `src/uptotrial/api/errors.py`
+- Create and use custom exception classes from `app/api/errors.py`
 - Avoid bare `except:` clauses
 
 ## Async Code

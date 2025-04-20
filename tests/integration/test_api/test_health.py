@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient
 from starlette import status
 
-from src.uptotrial import __version__
+from app import __version__
 
 
 @pytest.mark.asyncio

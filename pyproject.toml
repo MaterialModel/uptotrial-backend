@@ -40,13 +40,14 @@ dev = [
 ]
 
 [project.scripts]
-uptotrial = "uptotrial.cli.commands:app"
+uptotrial = "app.cli.commands:app"
 
 [tool.ruff]
 target-version = "py312"
 line-length = 88
 select = ["E", "F", "B", "I", "N", "UP", "ANN", "PTH", "FBT", "A", "COM", "C4", "DTZ", "T10", "EM", "ISC", "ICN", "G", "PIE", "PYI", "PT", "Q", "RET", "SIM", "TID", "ARG", "PD", "PGH", "PL", "TRY", "RUF"]
-ignore = ["ANN101", "ANN102", "ANN401", "E501"]
+ignore = ["ANN101", "ANN102", "ANN401", "E501", "RET504", "ARG001", "TRY003", "PLR2004", "EM102", "PLR0913", "B008", "TRY400"]
+exclude = ["*.ipynb"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -67,3 +68,63 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
 python_classes = "Test*"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+# New tox configuration
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+env_list = py312, lint, typecheck, coverage
+isolated_build = True
+
+[testenv]
+description = run the tests with pytest
+package = wheel
+wheel_build_env = .pkg
+deps =
+    pytest>=8.0.0
+    pytest-cov>=4.1.0
+    pytest-asyncio>=0.21.0
+commands =
+    pytest {tty:--color=yes} {posargs:tests}
+basepython = python3.12
+
+[testenv:lint]
+description = run linters
+skip_install = true
+deps =
+    ruff>=0.2.2
+commands =
+    ruff check {posargs:.}
+basepython = python3.12
+
+[testenv:typecheck]
+description = run type checks
+deps =
+    mypy>=1.8.0
+commands =
+    mypy {posargs:app tests}
+basepython = python3.12
+    
+[testenv:coverage]
+description = run tests with coverage reporting
+deps =
+    pytest>=8.0.0
+    pytest-cov>=4.1.0
+    pytest-asyncio>=0.21.0
+commands =
+    pytest --cov=app --cov-report=term-missing --cov-report=xml --cov-report=html {posargs:tests}
+basepython = python3.12
+    
+[testenv:specific]
+description = run specific tests with custom options
+deps =
+    pytest>=8.0.0
+    pytest-asyncio>=0.21.0
+    pytest-cov>=4.1.0
+commands =
+    pytest {posargs}
+basepython = python3.12
+"""

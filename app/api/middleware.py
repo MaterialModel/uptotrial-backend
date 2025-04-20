@@ -1,21 +1,24 @@
 """Middleware for API endpoints."""
 
+import logging
 import time
 import uuid
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from uptotrial.core.config import get_settings
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     """Middleware to handle correlation IDs for request tracking."""
     
     async def dispatch(
-        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         """Process the request and ensure it has a correlation ID.
         
@@ -35,7 +38,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
             "/docs", 
             "/openapi.json", 
             "/", 
-            "/favicon.ico"
+            "/favicon.ico",
         ]
         
         if any(request.url.path.startswith(path) for path in exempt_paths):
@@ -43,6 +46,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
             # but we don't require it to be present in the request
             correlation_id = str(uuid.uuid4())
             request.state.correlation_id = correlation_id
+            logger.debug("Generated correlation ID %s for exempt path %s", correlation_id, request.url.path)
             response = await call_next(request)
             response.headers["X-Correlation-ID"] = correlation_id
             return response
@@ -52,6 +56,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         
         if not correlation_id:
             # Return 400 Bad Request if correlation ID is missing
+            logger.warning("Request to %s missing required X-Correlation-ID header", request.url.path)
             return Response(
                 content='{"detail":"X-Correlation-ID header is required"}',
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -63,6 +68,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
             uuid.UUID(correlation_id)
         except ValueError:
             # Return 400 Bad Request if correlation ID is not a valid UUID
+            logger.warning("Invalid X-Correlation-ID value: %s", correlation_id)
             return Response(
                 content='{"detail":"X-Correlation-ID must be a valid UUID"}',
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -85,7 +91,7 @@ class RequestProcessingTimeMiddleware(BaseHTTPMiddleware):
     """Middleware to track request processing time."""
     
     async def dispatch(
-        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         """Process the request and track time.
         
@@ -119,7 +125,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.correlation_id_rate_limit_data = {}
     
     async def dispatch(
-        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         """Process the request and apply rate limiting.
         
@@ -141,11 +147,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # 1. Apply global rate limiting based on IP
         if self._is_rate_limited(client_ip, now, self.global_rate_limit_data, 
                                self.settings.global_rate_limit_requests):
+            logger.warning("Global rate limit exceeded for IP: %s", client_ip)
             return self._create_rate_limit_response(
                 self.global_rate_limit_data[client_ip]["timestamp"], 
                 now,
                 self.settings.rate_limit_period_seconds,
-                "Global rate limit exceeded"
+                "Global rate limit exceeded",
             )
         
         # 2. Apply correlation ID-based rate limiting if available
@@ -153,18 +160,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             correlation_id = request.state.correlation_id
             if self._is_rate_limited(correlation_id, now, self.correlation_id_rate_limit_data,
                                    self.settings.correlation_id_rate_limit_requests):
+                logger.warning("Correlation ID rate limit exceeded for ID: %s", correlation_id)
                 return self._create_rate_limit_response(
                     self.correlation_id_rate_limit_data[correlation_id]["timestamp"],
                     now,
                     self.settings.rate_limit_period_seconds,
-                    "Correlation ID rate limit exceeded"
+                    "Correlation ID rate limit exceeded",
                 )
         
         # Process the request
         return await call_next(request)
     
     def _is_rate_limited(
-        self, key: str, now: float, rate_limit_data: dict, limit: int
+        self, key: str, now: float, rate_limit_data: dict, limit: int,
     ) -> bool:
         """Check if a key is rate limited.
         
@@ -189,24 +197,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 "timestamp": now,
             }
             return False
-        else:
-            # Update existing data
-            if now - rate_limit_data[key]["timestamp"] > self.settings.rate_limit_period_seconds:
-                # Reset if period has passed
-                rate_limit_data[key] = {
-                    "count": 1,
-                    "timestamp": now,
-                }
-                return False
-            else:
-                # Increment count
-                rate_limit_data[key]["count"] += 1
-                
-                # Check if rate limit exceeded
-                return rate_limit_data[key]["count"] > limit
+        # Update existing data
+        if now - rate_limit_data[key]["timestamp"] > self.settings.rate_limit_period_seconds:
+            # Reset if period has passed
+            rate_limit_data[key] = {
+                "count": 1,
+                "timestamp": now,
+            }
+            return False
+        # Increment count
+        rate_limit_data[key]["count"] += 1
+
+        # Check if rate limit exceeded
+        return rate_limit_data[key]["count"] > limit
     
     def _create_rate_limit_response(
-        self, timestamp: float, now: float, period: int, message: str
+        self, timestamp: float, now: float, period: int, message: str,
     ) -> Response:
         """Create a rate limit exceeded response.
         

@@ -93,7 +93,7 @@ The project follows a domain-driven design approach with a clean architecture. F
 6. **Run the development server**
 
    ```bash
-   uvicorn src.uptotrial.main:app --reload
+   uvicorn app.main:app --reload
    ```
 
 7. **Access the API documentation**
@@ -151,10 +151,10 @@ For details on working with the OpenAI Responses API, see:
 
 ## Testing
 
-The project uses Tox for test orchestration and Pytest for testing. Always run tests through Tox:
+The project uses Tox for test orchestration and Pytest for testing. The tox configuration is in `pyproject.toml` and specifically requires Python 3.12. Always run tests through Tox:
 
 ```bash
-# Run all tests (default Python environment)
+# Run all tests with Python 3.12
 tox
 
 # Run only linting
@@ -168,6 +168,9 @@ tox -e coverage
 
 # Run specific tests
 tox -e specific -- tests/unit/test_middleware/test_correlation_id.py -v
+
+# Using python -m syntax (alternative)
+python -m tox -e lint
 ```
 
 For detailed testing guidelines, see [Testing Guidelines](.cursor/rules/05-testing.mdc).

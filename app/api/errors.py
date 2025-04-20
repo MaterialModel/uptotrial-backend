@@ -1,11 +1,14 @@
 """Error handling utilities for API endpoints."""
 
-from typing import Any, Dict
+import logging
+from typing import Any
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseError(Exception):
@@ -48,6 +51,8 @@ async def service_error_handler(request: Request, exc: ServiceError) -> JSONResp
     Returns:
         JSONResponse: Error response
     """
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    logger.error("Service error: %s", exc.detail, extra={"correlation_id": correlation_id})
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         content={"detail": exc.detail},
@@ -64,12 +69,16 @@ async def database_error_handler(request: Request, exc: DatabaseError) -> JSONRe
     Returns:
         JSONResponse: Error response
     """
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    
     if isinstance(exc, NotFoundError):
+        logger.info("Resource not found: %s", exc.detail, extra={"correlation_id": correlation_id})
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"detail": exc.detail},
         )
     
+    logger.error("Database error: %s", exc.detail, extra={"correlation_id": correlation_id})
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": exc.detail},
@@ -77,7 +86,7 @@ async def database_error_handler(request: Request, exc: DatabaseError) -> JSONRe
 
 
 async def validation_error_handler(
-    request: Request, exc: RequestValidationError
+    request: Request, exc: RequestValidationError,
 ) -> JSONResponse:
     """Handle validation errors.
     
@@ -88,7 +97,8 @@ async def validation_error_handler(
     Returns:
         JSONResponse: Error response with validation details
     """
-    errors: Dict[str, Any] = {"detail": []}
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    errors: dict[str, Any] = {"detail": []}
     
     for error in exc.errors():
         error_detail = {
@@ -97,6 +107,14 @@ async def validation_error_handler(
             "type": error["type"],
         }
         errors["detail"].append(error_detail)
+    
+    # Log validation errors with correlation ID
+    logger.warning(
+        "Validation error for request to %s: %s", 
+        request.url.path, 
+        exc.errors(),
+        extra={"correlation_id": correlation_id},
+    )
     
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

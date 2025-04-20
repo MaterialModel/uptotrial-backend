@@ -1,12 +1,12 @@
 """Dependency injection functions for API endpoints."""
 
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from uptotrial.core.config import Settings, get_settings
-from uptotrial.infrastructure.database.session import get_db_session
+from app.core.config import Settings, get_settings
+from app.infrastructure.database.session import get_db_session
 
 
 async def get_settings_dep() -> Settings:

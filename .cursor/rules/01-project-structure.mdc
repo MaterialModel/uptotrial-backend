@@ -11,21 +11,20 @@ UpToTrial follows a domain-driven design with a clean architecture pattern. When
 
 ```
 uptotrial-backend/
-├── src/
-│   └── uptotrial/            # Main package
-│       ├── api/              # API endpoints (thin views)
-│       ├── domain/           # Domain-driven design core
-│       ├── infrastructure/   # External integrations
-│       └── utils/            # Utility functions
+├── app/                     # Main package
+│   ├── api/                 # API endpoints (thin views)
+│   ├── domain/              # Domain-driven design core
+│   ├── infrastructure/      # External integrations
+│   └── utils/               # Utility functions
 ```
 
 ## Component Placement
 
-- API endpoints: `src/uptotrial/api/v1/endpoints/`
-- Domain models: `src/uptotrial/domain/models/`
-- Database models: `src/uptotrial/infrastructure/database/models/`
-- Services: `src/uptotrial/domain/services/`
-- LLM utilities: `src/uptotrial/infrastructure/llm/`
+- API endpoints: `app/api/v1/endpoints/`
+- Domain models: `app/domain/models/`
+- Database models: `app/infrastructure/database/models/`
+- Services: `app/domain/services/`
+- LLM utilities: `app/infrastructure/llm/`
 
 ## Application Flow
 
@@ -46,6 +45,6 @@ uptotrial-backend/
 ## References
 
 For detailed implementation examples, refer to:
-- `src/uptotrial/app.py`: Application factory
-- `src/uptotrial/api/deps.py`: Dependency injection
-- `src/uptotrial/domain/services/`: Business logic
+- `app/app.py`: Application factory
+- `app/api/deps.py`: Dependency injection
+- `app/domain/services/`: Business logic

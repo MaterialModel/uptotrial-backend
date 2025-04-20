@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from uptotrial import __version__
+from app import __version__
 
 router = APIRouter()
 

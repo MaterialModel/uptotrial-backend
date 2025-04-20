@@ -22,7 +22,6 @@ class Settings(BaseSettings):
     # Application
     app_name: str = "UpToTrial API"
     app_description: str = "Clinical Trials Search API"
-    app_version: str = "0.1.0"
     environment: Literal["development", "testing", "staging", "production"] = "development"
     debug: bool = False
 
