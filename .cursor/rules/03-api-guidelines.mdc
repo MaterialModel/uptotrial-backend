@@ -1,6 +1,7 @@
 ---
 description: Guidelines for API endpoint development
-type: ContextSpecific
+globs: 
+alwaysApply: false
 ---
 
 # API Development Guidelines
@@ -10,7 +11,19 @@ When developing API endpoints for UpToTrial, follow these guidelines to maintain
 ## Endpoint Structure
 
 ```python
-@router.get("", response_model=ResponseSchema)
+@router.get(
+    "/name",
+    response_model=ResponseSchema,
+    responses={
+        200: {"description": "Successful response"},
+        400: {"description": "Bad request"},
+        401: {"description": "Unauthorized"},
+        403: {"description": "Forbidden"},
+        404: {"description": "Not found"},
+        422: {"description": "Validation error"},
+        500: {"description": "Internal server error"},
+    },
+)
 async def endpoint_name(
     query: str,
     request: Request,
@@ -115,5 +128,5 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
 ## API Versioning
 
-- All endpoints should be under a version prefix: `/api/v1/...`
+- All endpoints should be under a version prefix: `/api/...`
 - Breaking changes should be introduced in a new version

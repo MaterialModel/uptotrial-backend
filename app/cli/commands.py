@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.table import Table
 
 from app import __version__
-from app.core.config import get_settings
+from app.config import get_settings
 
 # Create Typer app
 app = typer.Typer(
@@ -38,35 +38,10 @@ def config() -> None:
     # Add selected settings to the table
     table.add_row("Environment", settings.environment)
     table.add_row("Debug Mode", str(settings.debug))
-    table.add_row("Database", settings.database_identifier)
+    table.add_row("Database", settings.get_database_identifier())
     table.add_row("OpenAI Model", settings.openai_model)
     
     console.print(table)
-
-
-@app.command()
-def search(
-    query: str = typer.Argument(..., help="Natural language query for clinical trials"),
-    limit: int = typer.Option(10, "--limit", "-l", help="Maximum number of results to return"),
-) -> None:
-    """Search for clinical trials using natural language.
-    
-    Args:
-        query: Natural language query
-        limit: Maximum number of results
-    """
-    # This is a placeholder - actual implementation will connect to the search service
-    console.print(f"Searching for: [bold cyan]{query}[/bold cyan]")
-    console.print(f"Limit: {limit}")
-    console.print("\n[yellow]This feature is not yet implemented.[/yellow]")
-    
-    # In the future, this will display a table of search results
-    # table = Table(title="Search Results")
-    # table.add_column("NCT ID", style="cyan")
-    # table.add_column("Title", style="green")
-    # table.add_column("Status", style="yellow")
-    # console.print(table)
-
 
 if __name__ == "__main__":
     app()

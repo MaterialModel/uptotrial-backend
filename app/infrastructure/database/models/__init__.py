@@ -1,5 +1,5 @@
-"""SQLModel models for the database."""
+"""SQLAlchemy models for the database."""
 
-from app.infrastructure.database.models.base import Base
+from app.infrastructure.database.models.base_model import Base
 
 __all__ = ["Base"]

@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.declarative import declarative_base
 
-from app.core.config import get_settings
+from app.config import get_settings
 
 settings = get_settings()
 
@@ -18,10 +18,9 @@ settings = get_settings()
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
-    future=True,
     pool_size=settings.database_pool_size,
     max_overflow=settings.database_max_overflow,
-    poolclass=NullPool if settings.environment == "testing" else None,
+    pool_pre_ping=True,
 )
 
 # Create session factory
@@ -31,6 +30,7 @@ async_session_maker = async_sessionmaker(
     class_=AsyncSession,
 )
 
+DeclarativeBase = declarative_base()
 
 @asynccontextmanager
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

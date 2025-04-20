@@ -1,6 +1,7 @@
 ---
 description: Project structure and architecture guidelines
-type: Always
+globs: 
+alwaysApply: false
 ---
 
 # Project Structure and Architecture
@@ -12,39 +13,24 @@ UpToTrial follows a domain-driven design with a clean architecture pattern. When
 ```
 uptotrial-backend/
 ├── app/                     # Main package
-│   ├── api/                 # API endpoints (thin views)
-│   ├── domain/              # Domain-driven design core
-│   ├── infrastructure/      # External integrations
-│   └── utils/               # Utility functions
-```
+│   ├── api/                 # API endpoints (thin views) that use `services`
+│   ├── cli/                 # CLI for accessing the same services
+│   ├── infrastructure/      # External integrations (llm + db)
+│   └── services/            # The actual services
 
-## Component Placement
-
-- API endpoints: `app/api/v1/endpoints/`
-- Domain models: `app/domain/models/`
-- Database models: `app/infrastructure/database/models/`
-- Services: `app/domain/services/`
-- LLM utilities: `app/infrastructure/llm/`
+Read top level readme.md for more information.
 
 ## Application Flow
 
-1. Request enters through API endpoints (thin controllers)
-2. Controllers use dependency injection to access services
-3. Services contain business logic and access repositories
-4. Repositories interface with the database through models
-5. External services (like OpenAI) are accessed via infrastructure layer
+1. Request enters through API endpoints
+2. Endpoints use dependency injection to access services
+3. Services contain business logic and access external services (llm + db) via infrastructure layer
+4. Infrastructure layer does not depend on other parts of the app
 
 ## Key Architecture Principles
 
-- **Separation of Concerns**: Keep API, domain logic, and infrastructure separate
+- **Separation of Concerns**: Keep API, services, and infrastructure separate
 - **Dependency Injection**: Use FastAPI's dependency injection for services
 - **Single Responsibility**: Each component should have one reason to change
 - **Factory Pattern**: App is created using a factory (see `app.py`)
-- **Thin Controllers**: API endpoints should be thin, delegating to services
-
-## References
-
-For detailed implementation examples, refer to:
-- `app/app.py`: Application factory
-- `app/api/deps.py`: Dependency injection
-- `app/domain/services/`: Business logic
+- **Thin views**: API endpoints should be thin, delegating to services

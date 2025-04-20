@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import Settings, get_settings
+from app.config import Settings, get_settings
 from app.infrastructure.database.session import get_db_session
 
 

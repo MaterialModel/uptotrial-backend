@@ -4,7 +4,7 @@ import re
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, computed_field
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,8 +48,7 @@ class Settings(BaseSettings):
     global_rate_limit_requests: int = 60  # Global requests per IP per period
     correlation_id_rate_limit_requests: int = 30  # Requests per correlation ID per period
     
-    @computed_field
-    def database_identifier(self) -> str:
+    def get_database_identifier(self) -> str:
         """Get a human-readable identifier for the current database.
         
         Returns:

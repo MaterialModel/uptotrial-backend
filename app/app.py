@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from app import __version__
 from app.api.errors import register_exception_handlers
 from app.api.middleware import register_middleware
-from app.api.v1.router import api_router
-from app.core.config import Settings
+from app.api.router import api_router
+from app.config import Settings
 
 logger = logging.getLogger(__name__)
 

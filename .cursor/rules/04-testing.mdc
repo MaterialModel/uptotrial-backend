@@ -1,0 +1,32 @@
+---
+description: How to run tests
+globs: 
+alwaysApply: false
+---
+
+### Testing Guidelines
+
+- Write unit tests for all public functions
+- Use pytest fixtures for shared test components
+- Mock external services (especially OpenAI API)
+- Include integration tests for API endpoints
+- Verify correlation ID behavior in endpoint tests
+
+### Commands
+
+``bash
+# Run all tests with Python 3.12
+tox
+
+# Run only linting
+tox -e lint
+
+# Run only type checking
+tox -e typecheck
+
+# Run tests with coverage reporting
+tox -e coverage
+
+# Run specific tests
+tox -e specific -- tests/unit/test_middleware/test_correlation_id.py -v
+```

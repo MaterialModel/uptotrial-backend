@@ -5,7 +5,7 @@ import logging
 import uvicorn
 
 from app.app import create_app
-from app.core.config import get_settings
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 

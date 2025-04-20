@@ -9,7 +9,10 @@ from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.core.config import get_settings
+from app.config import get_settings
+
+# Define the structure for rate limit data: Dict[key, Dict[metric, value]]
+RateLimitData = dict[str, dict[str, float | int]]
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +44,14 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
             "/favicon.ico",
         ]
         
+        correlation_id = request.headers.get("X-Correlation-ID")
+
         if any(request.url.path.startswith(path) for path in exempt_paths):
-            # For exempt paths, we still add a correlation ID for tracking,
-            # but we don't require it to be present in the request
-            correlation_id = str(uuid.uuid4())
+            # for excempt path correlation id is not required
+            if correlation_id is None:
+                correlation_id = str(uuid.uuid4())
+                logger.debug("Generated correlation ID %s for exempt path %s", correlation_id, request.url.path)
             request.state.correlation_id = correlation_id
-            logger.debug("Generated correlation ID %s for exempt path %s", correlation_id, request.url.path)
             response = await call_next(request)
             response.headers["X-Correlation-ID"] = correlation_id
             return response
@@ -121,8 +126,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.settings = get_settings()
         # In a production system, use Redis or another distributed cache for rate limiting
-        self.global_rate_limit_data = {}
-        self.correlation_id_rate_limit_data = {}
+        self.global_rate_limit_data: RateLimitData = {}
+        self.correlation_id_rate_limit_data: RateLimitData = {}
     
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]],
@@ -172,7 +177,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
     
     def _is_rate_limited(
-        self, key: str, now: float, rate_limit_data: dict, limit: int,
+        self, key: str, now: float, rate_limit_data: RateLimitData, limit: int,
     ) -> bool:
         """Check if a key is rate limited.
         

@@ -39,6 +39,30 @@ alembic revision --autogenerate -m "Description of changes"
 alembic upgrade head
 ```
 
+## Package Management
+
+Always use uv for package management:
+
+```bash
+# Create virtual environment
+uv venv
+
+# Install dependencies
+uv pip install -e ".[dev]"
+
+# Add a new package
+uv pip install new-package
+```
+
+## Project Rules
+
+The project contains detailed rules in `.mdc` files in the `.cursor/rules/` directory. Always reference these when working on the codebase:
+
+1. [Project Structure and Architecture](.cursor/rules/01-project-structure.mdc)
+2. [Code Style and Formatting](.cursor/rules/02-code-style.mdc)
+3. [API Development Guidelines](.cursor/rules/03-api-guidelines.mdc)
+4. [Testing Guidelines](.cursor/rules/04-testing.mdc)
+
 ## Coding Standards
 
 ### Type Annotations
@@ -106,17 +130,15 @@ def get_user(id: Optional[int] = None) -> Optional[User]:
 
 When adding new components, place them in the appropriate directories:
 
-- API endpoints: `app/api/v1/endpoints/`
-- Domain models: `app/domain/models/`
+- API endpoints: `app/api/endpoints/`
 - Database models: `app/infrastructure/database/models/`
-- Services: `app/domain/services/`
+- Services: `app/services/`
 - LLM utilities: `app/infrastructure/llm/`
 
 ## External Service Integration
 
 When working with the OpenAI Responses API:
 
-- Use the existing client in `app/infrastructure/llm/client.py`
 - Follow error handling patterns for API failures
 - Properly mock responses in tests
 - Consider rate limits and timeout settings
@@ -152,16 +174,8 @@ Requests are rate-limited both globally and per correlation ID:
 ## Key Files for Understanding the Project
 
 - `app/app.py`: FastAPI application factory
-- `app/core/config.py`: Application configuration
+- `app/main.py`: Application entry point
 - `app/api/middleware.py`: Correlation ID and rate limiting
 - `app/infrastructure/llm/client.py`: OpenAI Responses API client
 - `app/api/deps.py`: Dependency injection
 - `app/infrastructure/database/session.py`: Database session management
-
-## Further Documentation
-
-Refer to these resources for more detailed information:
-- `docs/correlation_id.md`: Details on correlation ID implementation
-- `docs/responses_api.md`: OpenAI Responses API integration
-- `docs/development_guide.md`: Comprehensive development standards
-- `prds/2025-04-19-Fastapi-Clinical-Trials-Search.md`: Product requirements

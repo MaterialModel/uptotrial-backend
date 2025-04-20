@@ -48,8 +48,7 @@ from pydantic import BaseModel
 from sqlmodel import Field, SQLModel
 
 # Local modules
-from app.core.config import get_settings
-from app.domain.models import User
+from app.config import get_settings
 ```
 
 - **No wildcard imports**: Always import specific components

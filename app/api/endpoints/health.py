@@ -15,7 +15,14 @@ class HealthResponse(BaseModel):
     version: str
 
 
-@router.get("", response_model=HealthResponse)
+@router.get(
+    "",
+    response_model=HealthResponse,
+    responses={
+        200: {"description": "Health check successful"},
+        500: {"description": "Server is not healthy"},
+    },
+)
 async def health_check() -> HealthResponse:
     """Perform a health check.
 
