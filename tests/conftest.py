@@ -5,7 +5,6 @@ import os
 from collections.abc import AsyncGenerator, Generator
 
 import pytest
-import pytest_asyncio
 import httpx
 from fastapi import FastAPI
 from httpx import AsyncClient
