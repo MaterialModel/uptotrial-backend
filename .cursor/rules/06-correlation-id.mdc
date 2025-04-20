@@ -1,0 +1,141 @@
+---
+description: Guidelines for working with correlation IDs
+type: Always
+---
+
+# Correlation ID Guidelines
+
+UpToTrial uses correlation IDs for request tracking and rate limiting. This is a critical feature for security, monitoring, and debugging.
+
+## What is a Correlation ID?
+
+A correlation ID is a unique identifier (UUID) that follows a request through the entire system, allowing us to:
+
+1. Track requests across components and services
+2. Associate logs from different parts of the application
+3. Implement per-client rate limiting
+4. Debug issues by following a specific request flow
+
+## Correlation ID Requirements
+
+- All non-exempt endpoints require an `X-Correlation-ID` header
+- The value must be a valid UUID v4
+- Exempt paths: `/api/health`, `/docs`, `/openapi.json`, `/`, `/favicon.ico`
+
+## Accessing the Correlation ID
+
+In route handlers, access the correlation ID from the request state:
+
+```python
+@router.get("/examples")
+async def get_examples(request: Request):
+    # The correlation ID is already validated and available
+    correlation_id = request.state.correlation_id
+    
+    # Use it for logging
+    logger.info("Processing request", extra={"correlation_id": correlation_id})
+    
+    # Pass it to services
+    results = await service.get_examples(correlation_id=correlation_id)
+    
+    return {"results": results}
+```
+
+## Including Correlation ID in Logs
+
+Always include the correlation ID in log messages:
+
+```python
+import logging
+import structlog
+
+logger = structlog.getLogger()
+
+def process_data(data: dict, correlation_id: str) -> dict:
+    logger.info(
+        "Processing data", 
+        correlation_id=correlation_id,
+        data_size=len(data)
+    )
+    # Process data...
+    if error_occurred:
+        logger.error(
+            "Error processing data",
+            correlation_id=correlation_id,
+            error=str(error)
+        )
+```
+
+## Passing Correlation ID Between Services
+
+When making requests to other services, always propagate the correlation ID:
+
+```python
+async def call_external_service(data: dict, correlation_id: str) -> dict:
+    """Call an external service with correlation ID."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.example.com/endpoint",
+            json=data,
+            headers={"X-Correlation-ID": correlation_id}
+        )
+        return response.json()
+```
+
+## Rate Limiting Considerations
+
+Be aware that requests are rate-limited both globally and per correlation ID:
+
+- Global: 60 requests per minute per IP
+- Per correlation ID: 30 requests per minute
+
+Design endpoints to be efficient to stay within these limits.
+
+## Testing with Correlation IDs
+
+Always include correlation ID headers in your test requests:
+
+```python
+@pytest.mark.asyncio
+async def test_endpoint_with_correlation_id(client: AsyncClient) -> None:
+    correlation_id = str(uuid.uuid4())
+    response = await client.get(
+        "/api/v1/endpoint",
+        headers={"X-Correlation-ID": correlation_id}
+    )
+    assert response.status_code == 200
+    assert response.headers["X-Correlation-ID"] == correlation_id
+```
+
+Also test the rejection of invalid correlation IDs:
+
+```python
+@pytest.mark.asyncio
+async def test_endpoint_rejects_invalid_correlation_id(client: AsyncClient) -> None:
+    response = await client.get(
+        "/api/v1/endpoint",
+        headers={"X-Correlation-ID": "not-a-uuid"}
+    )
+    assert response.status_code == 400
+    assert "X-Correlation-ID must be a valid UUID" in response.text
+```
+
+Always run tests using tox rather than pytest directly:
+
+```bash
+# Run all tests including correlation ID tests
+tox
+
+# Run specific correlation ID tests
+tox -e specific -- tests/unit/test_middleware/test_correlation_id.py
+
+# Run with coverage for middleware tests
+tox -e coverage -- tests/unit/test_middleware/
+```
+
+## Security Implications
+
+Do not use predictable correlation IDs:
+- Always use randomly generated UUIDs
+- Treat correlation IDs as potentially sensitive data
+- Do not expose internal details in correlation IDs

@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "uptotrial"
+version = "0.1.0"
+description = "FastAPI-based Clinical Trials Search API"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+authors = [
+    { name = "UpToTrial Team" },
+]
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "sqlmodel>=0.0.16",
+    "psycopg[binary]>=3.1.16",
+    "alembic>=1.13.1",
+    "pydantic>=2.6.1",
+    "pydantic-settings>=2.2.1",
+    "openai>=1.13.3",
+    "typer>=0.9.0",
+    "rich>=13.7.0",
+    "httpx>=0.26.0",
+    "structlog>=24.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.2.2",
+    "mypy>=1.8.0",
+    "tox>=4.12.1",
+    "black>=24.2.0",
+    "isort>=5.13.2",
+    "pre-commit>=3.6.0",
+]
+
+[project.scripts]
+uptotrial = "uptotrial.cli.commands:app"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+select = ["E", "F", "B", "I", "N", "UP", "ANN", "PTH", "FBT", "A", "COM", "C4", "DTZ", "T10", "EM", "ISC", "ICN", "G", "PIE", "PYI", "PT", "Q", "RET", "SIM", "TID", "ARG", "PD", "PGH", "PL", "TRY", "RUF"]
+ignore = ["ANN101", "ANN102", "ANN401", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+strict_optional = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_ignores = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+python_classes = "Test*"

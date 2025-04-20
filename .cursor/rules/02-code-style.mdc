@@ -1,0 +1,105 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Code Style and Formatting
+
+UpToTrial follows strict coding standards to ensure maintainability and consistency across the codebase.
+
+## Type Annotations
+
+Always use modern Python 3.12+ type annotations:
+
+```python
+# CORRECT ✅
+def get_items() -> list[Item]:
+    ...
+
+def get_user(id: int | None = None) -> User | None:
+    ...
+
+# INCORRECT ❌
+from typing import List, Optional
+def get_items() -> List[Item]:
+    ...
+def get_user(id: Optional[int] = None) -> Optional[User]:
+    ...
+```
+
+## Import Guidelines
+
+Always organize imports in this order:
+1. Standard library imports
+2. Third-party packages 
+3. Local modules
+
+```python
+# Standard library
+import json
+import uuid
+from datetime import datetime
+
+# Third-party
+import httpx
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlmodel import Field, SQLModel
+
+# Local modules
+from uptotrial.core.config import get_settings
+from uptotrial.domain.models import User
+```
+
+- **No wildcard imports**: Always import specific components
+- Keep imports alphabetized within each section
+
+## Function Structure
+
+### Docstrings
+
+All public functions must have comprehensive docstrings:
+
+```python
+def calculate_risk_score(patient_data: dict[str, any], model_type: str = "standard") -> float:
+    """Calculate risk score based on patient data.
+    
+    Uses the specified risk model to analyze patient data and generate
+    a clinical trial suitability score.
+    
+    Args:
+        patient_data: Dictionary containing patient medical information
+        model_type: Risk model to use (standard, enhanced, or experimental)
+        
+    Returns:
+        float: Risk score between 0.0 and 1.0
+        
+    Raises:
+        ValueError: If model_type is not one of the supported types
+    """
+```
+
+### Function Length
+
+- Maximum function length: aim for under 50 lines
+- If a function grows too large, consider splitting it into smaller functions
+
+## Naming Conventions
+
+- **Variables and Functions**: `snake_case`
+- **Classes**: `PascalCase`
+- **Constants**: `UPPER_SNAKE_CASE`
+- **Private attributes**: Prefix with underscore `_private_var`
+
+## Error Handling
+
+- Use structured exception handling
+- Create and use custom exception classes from `src/uptotrial/api/errors.py`
+- Avoid bare `except:` clauses
+
+## Async Code
+
+- All I/O operations (database, network) must be async
+- Always `await` async functions
+- Use `async with` and `async for` with async context managers and iterators

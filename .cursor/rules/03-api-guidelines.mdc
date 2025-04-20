@@ -1,0 +1,119 @@
+---
+description: Guidelines for API endpoint development
+type: ContextSpecific
+---
+
+# API Development Guidelines
+
+When developing API endpoints for UpToTrial, follow these guidelines to maintain consistency and security.
+
+## Endpoint Structure
+
+```python
+@router.get("", response_model=ResponseSchema)
+async def endpoint_name(
+    query: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    service: ServiceClass = Depends(get_service),
+) -> ResponseSchema:
+    """Endpoint description.
+    
+    Detailed explanation of what the endpoint does.
+    
+    Args:
+        query: Query parameter description
+        request: FastAPI request object
+        db: Database session
+        service: Service dependency
+        
+    Returns:
+        ResponseSchema: Description of the response
+        
+    Raises:
+        HTTPException: When and why this might be raised
+    """
+    # Access correlation ID from request state
+    correlation_id = request.state.correlation_id
+    
+    # Use services for business logic
+    result = await service.some_method(query, correlation_id)
+    
+    return ResponseSchema(data=result)
+```
+
+## Correlation ID Requirements
+
+All endpoints (except exempt paths) must support correlation ID tracking:
+
+- Correlation ID is automatically extracted from the `X-Correlation-ID` header
+- It's available in `request.state.correlation_id`
+- Always pass the correlation ID to services for logging and tracing
+- Exempt paths: `/api/health`, `/docs`, `/openapi.json`, `/`, `/favicon.ico`
+
+## Input Validation
+
+- Define Pydantic models for request and response schemas
+- Use path parameters for resource identifiers
+- Use query parameters for filtering/searching
+- Use request body for complex data
+- Always validate input with appropriate types and constraints
+
+Example schema:
+
+```python
+class SearchQuery(BaseModel):
+    """Search query schema."""
+    
+    query: str = Field(..., description="Natural language search query")
+    max_results: int = Field(10, ge=1, le=100, description="Maximum number of results")
+    include_completed: bool = Field(False, description="Include completed trials")
+```
+
+## Error Handling
+
+When an error occurs, use appropriate exceptions:
+
+```python
+from fastapi import HTTPException, status
+from uptotrial.api.errors import NotFoundError, ServiceError
+
+# For domain-specific errors
+if not user_found:
+    raise NotFoundError("User not found")
+
+# For HTTP-specific errors
+if invalid_request:
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid request parameters"
+    )
+```
+
+## Rate Limiting
+
+Be aware of rate limiting when designing endpoints:
+- Global limit: 60 requests per minute per IP
+- Per correlation ID: 30 requests per minute
+- Design endpoints to be efficient to stay within these limits
+
+## Response Structure
+
+All responses should follow a consistent structure:
+
+```python
+class PaginatedResponse(BaseModel, Generic[T]):
+    """Paginated response schema."""
+    
+    items: list[T]
+    total: int
+    page: int
+    page_size: int
+    next_page: int | None = None
+    prev_page: int | None = None
+```
+
+## API Versioning
+
+- All endpoints should be under a version prefix: `/api/v1/...`
+- Breaking changes should be introduced in a new version

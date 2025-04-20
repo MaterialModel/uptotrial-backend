@@ -1,0 +1,204 @@
+---
+description: Testing guidelines and practices
+type: ContextSpecific
+---
+
+# Testing Guidelines
+
+UpToTrial uses pytest for testing, orchestrated through tox. Follow these guidelines when writing or modifying tests.
+
+## Test Structure
+
+Organize tests to mirror the application structure:
+
+```
+tests/
+├── unit/                 # Unit tests
+│   ├── test_llm/         # LLM client tests
+│   └── test_middleware/  # Middleware tests
+└── integration/          # Integration tests
+    └── test_api/         # API endpoint tests
+```
+
+## Test Naming
+
+Use descriptive test names that explain what is being tested:
+
+```python
+# GOOD
+def test_correlation_id_middleware_rejects_invalid_uuid():
+    ...
+
+# BAD
+def test_middleware():
+    ...
+```
+
+## Test Fixtures
+
+Use pytest fixtures for shared test components:
+
+```python
+@pytest.fixture
+def test_app() -> FastAPI:
+    """Create a test application with middleware."""
+    app = FastAPI()
+    app.add_middleware(CorrelationIdMiddleware)
+    
+    @app.get("/protected")
+    async def protected_route(request: Request):
+        return {"correlation_id": request.state.correlation_id}
+    
+    return app
+
+@pytest.mark.asyncio
+async def test_protected_route_requires_correlation_id(test_app: FastAPI) -> None:
+    """Test that protected routes require a correlation ID."""
+    async with AsyncClient(app=test_app, base_url="http://test") as client:
+        response = await client.get("/protected")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+```
+
+## Database Testing
+
+For database tests:
+
+1. Use a separate test database
+2. Create and destroy the schema for each test session
+3. Use transaction rollbacks to isolate tests
+
+```python
+@pytest_asyncio.fixture(scope="session")
+async def db_engine(test_settings: TestSettings) -> AsyncGenerator:
+    """Create a test database engine."""
+    engine = create_async_engine(
+        test_settings.database_url,
+        echo=False,
+        poolclass=NullPool,
+    )
+    
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+    
+    yield engine
+    
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.drop_all)
+```
+
+## Mocking External Services
+
+Always mock external services, especially LLM APIs:
+
+```python
+@pytest.fixture
+def mock_openai_response() -> MagicMock:
+    """Create a mock OpenAI response."""
+    response = MagicMock()
+    response.message.content = "This is a test response"
+    response.conversation_id = "test-conversation-id"
+    return response
+
+@pytest.mark.asyncio
+async def test_search_trials(mock_openai_response: MagicMock) -> None:
+    """Test searching for trials with mocked OpenAI."""
+    with patch("openai.AsyncOpenAI") as mock_openai:
+        mock_client = MagicMock()
+        mock_openai.return_value = mock_client
+        mock_client.responses.create = AsyncMock(return_value=mock_openai_response)
+        
+        # Test your service with the mock
+        ...
+```
+
+## API Testing
+
+For API endpoint tests:
+
+1. Test with and without correlation IDs
+2. Verify proper error responses
+3. Test rate limiting behavior
+4. Use dependency overrides for services
+
+```python
+@pytest.mark.asyncio
+async def test_search_endpoint(client: AsyncClient) -> None:
+    """Test the search endpoint."""
+    response = await client.get(
+        "/api/v1/search?query=cancer",
+        headers={"X-Correlation-ID": str(uuid.uuid4())}
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert "results" in data
+```
+
+## Test Coverage
+
+Aim for high test coverage:
+
+- 90%+ for domain and infrastructure layers
+- 80%+ for API endpoints
+- Focus on testing business logic and edge cases
+
+## Parameterized Tests
+
+Use parameterized tests for multiple similar test cases:
+
+```python
+@pytest.mark.parametrize(
+    "query,expected_count", 
+    [
+        ("cancer", 5),
+        ("lung cancer", 3),
+        ("phase 3 trials", 10),
+    ]
+)
+def test_search_results_count(query: str, expected_count: int) -> None:
+    """Test search returns correct number of results for different queries."""
+    results = search_service.search(query)
+    assert len(results) == expected_count
+```
+
+## Integration Tests
+
+For integration tests:
+
+1. Test the entire request flow
+2. Use the test client from FastAPI
+3. Set up necessary test data
+4. Verify database state changes
+
+## Running Tests with Tox
+
+Always use tox to run tests, not pytest directly. Tox ensures consistent test environments and workflows:
+
+```bash
+# Run all tests (default Python environment)
+tox
+
+# Run only linting
+tox -e lint
+
+# Run only type checking
+tox -e typecheck
+
+# Run tests with coverage reporting
+tox -e coverage
+
+# Run specific tests or pass pytest arguments
+tox -e specific -- tests/unit/test_middleware/test_correlation_id.py -v
+
+# Run with specific pytest markers
+tox -e specific -- -m "asyncio"
+
+# Combination of specific file and flags
+tox -e specific -- tests/unit/test_llm --cov=src.uptotrial.infrastructure.llm
+```
+
+The project's tox.ini provides several environments:
+- `py312`: Run tests with Python 3.12
+- `lint`: Run linting with ruff
+- `typecheck`: Run type checking with mypy
+- `coverage`: Run tests with coverage reports
+- `specific`: Run tests with custom pytest arguments

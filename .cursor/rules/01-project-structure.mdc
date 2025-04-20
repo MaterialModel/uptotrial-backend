@@ -1,0 +1,51 @@
+---
+description: Project structure and architecture guidelines
+type: Always
+---
+
+# Project Structure and Architecture
+
+UpToTrial follows a domain-driven design with a clean architecture pattern. When working with this codebase, follow these structural guidelines:
+
+## Directory Organization
+
+```
+uptotrial-backend/
+├── src/
+│   └── uptotrial/            # Main package
+│       ├── api/              # API endpoints (thin views)
+│       ├── domain/           # Domain-driven design core
+│       ├── infrastructure/   # External integrations
+│       └── utils/            # Utility functions
+```
+
+## Component Placement
+
+- API endpoints: `src/uptotrial/api/v1/endpoints/`
+- Domain models: `src/uptotrial/domain/models/`
+- Database models: `src/uptotrial/infrastructure/database/models/`
+- Services: `src/uptotrial/domain/services/`
+- LLM utilities: `src/uptotrial/infrastructure/llm/`
+
+## Application Flow
+
+1. Request enters through API endpoints (thin controllers)
+2. Controllers use dependency injection to access services
+3. Services contain business logic and access repositories
+4. Repositories interface with the database through models
+5. External services (like OpenAI) are accessed via infrastructure layer
+
+## Key Architecture Principles
+
+- **Separation of Concerns**: Keep API, domain logic, and infrastructure separate
+- **Dependency Injection**: Use FastAPI's dependency injection for services
+- **Single Responsibility**: Each component should have one reason to change
+- **Factory Pattern**: App is created using a factory (see `app.py`)
+- **Thin Controllers**: API endpoints should be thin, delegating to services
+
+## References
+
+For detailed implementation examples, refer to:
+- `src/uptotrial/app.py`: Application factory
+- `src/uptotrial/api/deps.py`: Dependency injection
+- `src/uptotrial/domain/services/`: Business logic
