@@ -6,7 +6,7 @@ import jinja2
 class JinjaTemplateManager:
     """ Loads templates and renders them with jinja2"""
 
-    def __init__(self, template_dir: str = "app/infrastructure/llm/prompts/templates") -> None:
+    def __init__(self, template_dir: str = "./app/services/clinical_trials_agent/prompts") -> None:
         self.env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(template_dir))
 

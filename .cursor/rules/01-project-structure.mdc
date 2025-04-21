@@ -15,7 +15,7 @@ uptotrial-backend/
 ├── app/                     # Main package
 │   ├── api/                 # API endpoints (thin views) that use `services`
 │   ├── cli/                 # CLI for accessing the same services
-│   ├── infrastructure/      # External integrations (llm + db)
+│   ├── infrastructure/      # External integrations (clinicaltrials.gov api + db)
 │   └── services/            # The actual services
 
 Read top level readme.md for more information.

@@ -16,7 +16,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
         case_sensitive=False,
-        extra="ignore",
+        extra="allow",
     )
 
     # Application
@@ -40,7 +40,6 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str = Field(default="", description="OpenAI API key")
-    openai_model: str = Field(default="gpt-4o", description="OpenAI model to use")
 
     # Security
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days

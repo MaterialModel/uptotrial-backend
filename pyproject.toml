@@ -59,6 +59,12 @@ dependencies = [
     "urllib3==2.4.0",
     "charset-normalizer==3.4.1",
     "jinja2==3.1.6",
+    "openai-agents==0.0.11",
+    "griffe==1.7.2",
+    "httpx-sse==0.4.0",
+    "mcp==1.6.0",
+    "sse-starlette==2.2.1",
+    "types-requests==2.32.0.20250328"
 ]
 
 [project.optional-dependencies]
@@ -83,7 +89,11 @@ exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "N", "UP", "ANN", "PTH", "FBT", "A", "COM", "C4", "DTZ", "T10", "EM", "ISC", "ICN", "G", "PIE", "PYI", "PT", "Q", "RET", "SIM", "TID", "ARG", "PD", "PGH", "PL", "TRY", "RUF"]
-ignore = ["ANN401", "E501", "RET504", "ARG001", "TRY003", "PLR2004", "EM102", "PLR0913", "B008", "TRY400", "RUF200", "N815"]
+ignore = ["ANN401", "E501", "RET504",
+          "ARG001", "TRY003", "PLR2004",
+          "EM102", "PLR0913", "B008",
+          "TRY400", "RUF200", "N815",
+          "G004", "EM101"]
 
 [tool.mypy]
 python_version = "3.12"

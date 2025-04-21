@@ -53,12 +53,7 @@ uv pip install -e ".[dev]"
 
 ### Configuration
 
-The application uses environment variables for configuration. Create a `.env` file in the project root with:
-
-```
-APP_ENV=development
-OPENAI_API_KEY=your_api_key_here
-```
+The application uses environment variables for configuration. Create a `.env` file based on .env.example
 
 ### Running the Application
 
@@ -70,6 +65,14 @@ uvicorn app.main:app --reload
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+### CLI
+
+```bash
+
+ python ./uptotrial.py --help
+
+ ```
+ 
 ## API Documentation
 
 Once the application is running, access the API documentation at:
@@ -126,27 +129,6 @@ alembic revision --autogenerate -m "Description of changes"
 
 # Apply migrations
 alembic upgrade head
-```
-
-## Project Structure
-
-```
-uptotrial-backend/
-├── alembic/               # Database migration scripts
-├── app/
-│   ├── api/               # API endpoints and routers
-│   │   └── endpoints/
-│   ├── cli/               # Command-line interface tools
-│   ├── infrastructure/    # External services integration
-│   │   ├── database/      # Database models and session handling
-│   │   └── llm/           # LLM client for OpenAI
-│   ├── main.py           # Application entry point
-│   └── services/         # Business logic services
-├── docs/                 # Documentation
-├── tests/                # Test suite
-│   ├── integration/      # Integration tests
-│   └── unit/            # Unit tests
-└── pyproject.toml       # Project configuration and dependencies
 ```
 
 ## License

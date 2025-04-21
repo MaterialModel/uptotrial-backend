@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -23,9 +23,9 @@ async def fetch_external_data(url: str) -> dict[str, Any] | None:
             response = await client.get(url)
             response.raise_for_status()  # Raises HTTPStatusError for 4xx/5xx responses
             print(f"Successfully fetched data, status code: {response.status_code}")
-            return response.json()
+            return cast(dict[str, Any], response.json())
     except httpx.HTTPStatusError as e:
-        print(f"HTTP error occurred: {e.status_code} - {e.response.text}")
+        print(f"HTTP error occurred: {e.response.status_code} - {e.response.text}")
         # Re-raise or handle specific status codes as needed
         raise
     except httpx.RequestError as e:
