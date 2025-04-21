@@ -55,6 +55,14 @@ uv pip install -e ".[dev]"
 
 The application uses environment variables for configuration. Create a `.env` file based on .env.example
 
+### CLI
+
+```bash
+
+ python ./uptotrial.py chat
+
+ ```
+
 ### Running the Application
 
 ```bash
@@ -64,14 +72,6 @@ uvicorn app.main:app --reload
 # Production server
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
-
-### CLI
-
-```bash
-
- python ./uptotrial.py --help
-
- ```
  
 ## API Documentation
 
