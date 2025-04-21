@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from functools import lru_cache
 from typing import cast
 
 from agents import (
@@ -18,33 +19,42 @@ from app.infrastructure.clinical_trials_gov.api_requests import (
     fetch_study,
     list_studies,
 )
-from app.services.clinical_trials_agent.template_manager import jinja_template_manager
-
-settings = get_settings()
-
-GPT_41_MINI = "gpt-4.1-mini"
-
-ctg_tools = [
-    list_studies,
-    fetch_study,
-]
-
-hosted_tools = [
-    WebSearchTool(),
-]
-
-agent_system_prompt = jinja_template_manager.render(
-    "clinical_trials_agent.jinja",
-)
+from app.services.clinical_trials_agent import GPT_41_MINI, template_manager
 
 ToolType = FunctionTool | FileSearchTool | WebSearchTool | ComputerTool
 
-agent = Agent(
-    name="Clinical Trials Agent",
-    instructions=agent_system_prompt,
-    model=GPT_41_MINI,
-    tools=cast(list[ToolType], ctg_tools + hosted_tools),
-)
+settings = get_settings()
+
+
+@lru_cache(maxsize=1)
+def get_agent() -> Agent:
+    """Creates and returns a cached instance of the Clinical Trials Agent.
+
+    This function initializes the agent with its configuration, including
+    system prompt, model, and tools. It uses LRU caching to ensure
+    only one instance of the agent is created.
+
+    Returns:
+        Agent: The configured Clinical Trials Agent instance.
+    """
+
+    ctg_tools = [
+        list_studies,
+        fetch_study,
+    ]
+
+    hosted_tools = [
+        WebSearchTool(),
+    ]
+
+    agent_system_prompt = template_manager.render("clinical_trials_agent.jinja")
+
+    return Agent(
+        name="Clinical Trials Agent",
+        instructions=agent_system_prompt,
+        model=GPT_41_MINI,
+        tools=cast(list[ToolType], ctg_tools + hosted_tools),
+    )
 
 
 async def conversation() -> AsyncGenerator[str | None, str | None]:
@@ -67,6 +77,7 @@ async def conversation() -> AsyncGenerator[str | None, str | None]:
     """
 
     set_default_openai_key(settings.openai_api_key)
+    agent = get_agent()
 
     with trace("Clinical Trials Agent"):
         resp: RunResult | None = None
