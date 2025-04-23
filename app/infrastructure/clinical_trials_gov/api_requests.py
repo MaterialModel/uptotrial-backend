@@ -1,6 +1,6 @@
 # Standard library imports first
 import logging
-from typing import Any, Literal
+from typing import Any, Annotated, Literal
 from urllib.parse import urlencode, urljoin
 
 from agents import function_tool
@@ -213,69 +213,40 @@ def _build_ctg_url(base_url: str, path: str, params: dict[str, Any] | None) -> s
 # --- API Functions ---
 @function_tool
 async def list_studies(
-    query_cond: str | None,
-    query_term: str | None,
-    query_locn: str | None,
-    query_titles: str | None,
-    query_intr: str | None,
-    query_outc: str | None,
-    query_spons: str | None,
-    query_lead: str | None,
-    query_id: str | None,
-    query_patient: str | None,
-    filter_overall_status: list[Status] | None,
-    filter_geo: str | None,
-    filter_ids: list[str] | None,
-    filter_advanced: str | None,
-    filter_synonyms: list[str] | None,
-    post_filter_overall_status: list[Status] | None,
-    post_filter_geo: str | None,
-    post_filter_ids: list[str] | None,
-    post_filter_advanced: str | None,
-    post_filter_synonyms: list[str] | None,
-    agg_filters: str | None,
-    geo_decay: str | None,
-    fields: list[AllowedField] | None,
-    sort: list[str] | None,
-    count_total: bool | None,
-    page_size: int | None,
-    page_token: str | None,
+    query_cond: Annotated[str | None, "Condition/disease query (Essie syntax)"],
+    query_term: Annotated[str | None, "Other terms query (Essie syntax)"],
+    query_locn: Annotated[str | None, "Location terms query (Essie syntax)"],
+    query_titles: Annotated[str | None, "Title/acronym query (Essie syntax)"],
+    query_intr: Annotated[str | None, "Intervention/treatment query (Essie syntax)"],
+    query_outc: Annotated[str | None, "Outcome measure query (Essie syntax)"],
+    query_spons: Annotated[str | None, "Sponsor/collaborator query (Essie syntax)"],
+    query_lead: Annotated[str | None, "Lead sponsor name query (Essie syntax)"],
+    query_id: Annotated[str | None, "Study IDs query (Essie syntax)"],
+    query_patient: Annotated[str | None, "Patient search query (Essie syntax)"],
+    filter_overall_status: Annotated[list[Status] | None, "List of statuses to filter by"],
+    filter_geo: Annotated[str | None, "Geo-distance filter function string. Format: distance(latitude,longitude,distance)"],
+    filter_ids: Annotated[list[str] | None, "List of NCT IDs to filter by"],
+    filter_advanced: Annotated[str | None, "Advanced filter query (Essie syntax)"],
+    filter_synonyms: Annotated[list[str] | None, "List of synonym filters ('area:id')"],
+    post_filter_overall_status: Annotated[list[Status] | None, "Post-aggregation status filter"],
+    post_filter_geo: Annotated[str | None, "Post-aggregation geo filter. Format: distance(latitude,longitude,distance) where latitude and longitude are decimal coordinates and distance is in km/mi"],
+    post_filter_ids: Annotated[list[str] | None, "Post-aggregation NCT ID filter"],
+    post_filter_advanced: Annotated[str | None, "Post-aggregation advanced filter"],
+    post_filter_synonyms: Annotated[list[str] | None, "Post-aggregation synonym filter"],
+    agg_filters: Annotated[str | None, "Aggregation filters string"],
+    geo_decay: Annotated[str | None, "Geo decay function string"],
+    fields: Annotated[list[AllowedField] | None, "List of specific fields to return (e.g., ['NCTId', 'BriefTitle', 'OverallStatus']). Returns default set if None"],
+    sort: Annotated[list[str] | None, "List of fields to sort by. Format: 'FieldName:direction' (e.g., 'LastUpdatePostDate:desc')"],
+    count_total: Annotated[bool | None, "Whether to return total count"],
+    page_size: Annotated[int | None, "Number of studies per page. Defaults to 10. Max 1000"],
+    page_token: Annotated[str | None, "Token for retrieving the next page"],
 ) -> str | None:
     """Returns data of studies matching query and filter parameters.
 
     Assumes 'json' format is used or fetch_with_urllib can handle others.
     See: https://clinicaltrials.gov/api/v2/studies (GET)
 
-    Args:
-        query_cond: Condition/disease query (Essie syntax). Defaults to None.
-        query_term: Other terms query (Essie syntax). Defaults to None.
-        query_locn: Location terms query (Essie syntax). Defaults to None.
-        query_titles: Title/acronym query (Essie syntax). Defaults to None.
-        query_intr: Intervention/treatment query (Essie syntax). Defaults to None.
-        query_outc: Outcome measure query (Essie syntax). Defaults to None.
-        query_spons: Sponsor/collaborator query (Essie syntax). Defaults to None.
-        query_lead: Lead sponsor name query (Essie syntax). Defaults to None.
-        query_id: Study IDs query (Essie syntax). Defaults to None.
-        query_patient: Patient search query (Essie syntax). Defaults to None.
-        filter_overall_status: List of statuses to filter by. Defaults to None.
-        filter_geo: Geo-distance filter function string. Defaults to None.
-        filter_ids: List of NCT IDs to filter by. Defaults to None.
-        filter_advanced: Advanced filter query (Essie syntax). Defaults to None.
-        filter_synonyms: List of synonym filters ('area:id'). Defaults to None.
-        post_filter_overall_status: Post-aggregation status filter. Uses Status literal. Defaults to None.
-        post_filter_geo: Post-aggregation geo filter. Defaults to None.
-        post_filter_ids: Post-aggregation NCT ID filter. Defaults to None.
-        post_filter_advanced: Post-aggregation advanced filter. Defaults to None.
-        post_filter_synonyms: Post-aggregation synonym filter. Defaults to None.
-        agg_filters: Aggregation filters string. Defaults to None.
-        geo_decay: Geo decay function string. Defaults to None.
-        fields: List of specific fields to return (e.g., ["NCTId", "BriefTitle", "OverallStatus"]). Uses AllowedField literal. Defaults to None (returns default set).
-        sort: List of fields to sort by. Format: 'FieldName:direction' where FieldName is from AllowedField and direction is from SortDirection (e.g., 'LastUpdatePostDate:desc'). Defaults to None.
-        count_total: Whether to return total count. Defaults to False.
-        page_size: Number of studies per page. Defaults to 10. Max 1000.
-        page_token: Token for retrieving the next page. Defaults to None.
-
-        Status can be ACTIVE_NOT_RECRUITING | COMPLETED | ENROLLING_BY_INVITATION | NOT_YET_RECRUITING | RECRUITING | SUSPENDED | TERMINATED | WITHDRAWN | AVAILABLE | NO_LONGER_AVAILABLE | TEMPORARILY_NOT_AVAILABLE | APPROVED_FOR_MARKETING | WITHHELD | UNKNOWN
+    Status can be ACTIVE_NOT_RECRUITING | COMPLETED | ENROLLING_BY_INVITATION | NOT_YET_RECRUITING | RECRUITING | SUSPENDED | TERMINATED | WITHDRAWN | AVAILABLE | NO_LONGER_AVAILABLE | TEMPORARILY_NOT_AVAILABLE | APPROVED_FOR_MARKETING | WITHHELD | UNKNOWN
 
     Returns:
         A PagedStudies object containing the list of studies and pagination info, or None on error.
@@ -322,15 +293,12 @@ async def list_studies(
 
 @function_tool
 async def fetch_study(
-    nct_id: str,
+    nct_id: Annotated[str, "The NCT Number (e.g., 'NCT04852770'). Required"],
 ) -> str | None:
     """Returns data of a single study by its NCT ID.
 
     Assumes 'json' format is used or fetch_with_urllib can handle others.
     See: https://clinicaltrials.gov/api/v2/studies/{nctId} (GET)
-
-    Args:
-        nct_id: The NCT Number (e.g., "NCT04852770"). Required.
 
     Returns:
         A Study object containing the detailed study data, or None on error.
