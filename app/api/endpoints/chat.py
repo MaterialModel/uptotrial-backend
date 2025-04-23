@@ -33,31 +33,30 @@ class ChatRequest(BaseModel):
     text: str
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def post_chat_new_session(request: ChatRequest,
-                                correlation_id: str = Header(alias="X-Correlation-ID"),
-                                db: AsyncSession = Depends(get_db)) -> ChatResponse:
-    """Process a new chat message and return the updated conversation.
+@router.post("/", response_model=ChatResponse)
+async def create_chat_session(request: ChatRequest,
+                          correlation_id: str = Header(alias="X-Correlation-ID"),
+                          db: AsyncSession = Depends(get_db)) -> ChatResponse:
+    """Create a new chat session with the initial message.
 
-    Handles incoming chat messages, processes them through the clinical trials agent,
-    and returns the updated conversation history.
+    Processes the first message through the clinical trials agent and
+    creates a new session with the conversation.
     """
     return await post_turn(None, request.text, correlation_id, db)
 
 
-@router.post("/chat/{session_uuid}", response_model=ChatResponse)
-async def post_chat_existing_session(session_uuid: str | None,
-                                     request: ChatRequest,
-                                     correlation_id: str = Header(alias="X-Correlation-ID"),
-                                     db: AsyncSession = Depends(get_db)) -> ChatResponse:
-    """Process a new chat message and return the updated conversation.
+@router.post("/{session_uuid}", response_model=ChatResponse)
+async def add_message_to_session(session_uuid: str,
+                               request: ChatRequest,
+                               correlation_id: str = Header(alias="X-Correlation-ID"),
+                               db: AsyncSession = Depends(get_db)) -> ChatResponse:
+    """Add a new message to an existing chat session.
 
-    Handles incoming chat messages, processes them through the clinical trials agent,
-    and returns the updated conversation history.
+    Processes a message through the clinical trials agent within the context
+    of an existing chat session.
 
     Args:
-        session_uuid: Optional unique identifier for the chat session.
-                      If not provided, a new session will be created.
+        session_uuid: Unique identifier for the chat session
         request: The chat request containing the user's message text
         correlation_id: Request correlation ID for tracing and logging
         db: Database session for persisting chat data
@@ -68,9 +67,9 @@ async def post_chat_existing_session(session_uuid: str | None,
     return await post_turn(session_uuid, request.text, correlation_id, db)
 
 
-@router.get("/chat/{session_uuid}", response_model=ChatResponse)
-async def get_chat(session_uuid: str,
-                   db: AsyncSession = Depends(get_db)) -> ChatResponse:
+@router.get("/{session_uuid}", response_model=ChatResponse)
+async def get_session_history(session_uuid: str,
+                           db: AsyncSession = Depends(get_db)) -> ChatResponse:
     """Retrieve the conversation history for a specific chat session.
 
     Gets all messages for the specified chat session from the database.
@@ -86,7 +85,7 @@ async def get_chat(session_uuid: str,
 
 
 @router.post(
-    "/stream",
+    "/streaming/new",
     responses={
         200: {
             "content": {"text/event-stream": {"schema": {"type": "string"}}},
@@ -94,12 +93,12 @@ async def get_chat(session_uuid: str,
         },
     },
 )
-async def post_chat_stream(
+async def stream_new_session(
     chat: ChatRequest,
     correlation_id: str = Header(alias="X-Correlation-ID"),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
-    """Stream the clinical trials agent's response as Server-Sent Events.
+    """Stream the clinical trials agent's response for a new session as Server-Sent Events.
 
     Creates a new chat session and streams the agent's response in real-time using
     Server-Sent Events. The client will receive events in the following format:
@@ -122,13 +121,65 @@ async def post_chat_stream(
     """
 
     return StreamingResponse(
-        post_turn_streamed(          # <- your generator
+        post_turn_streamed(
             None,
             chat.text,
             correlation_id,
             db,
-        ),                 # don't await - pass the generator itself
-        media_type="text/event-stream", # correct MIME type for SSE
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@router.post(
+    "/streaming/{session_uuid}",
+    responses={
+        200: {
+            "content": {"text/event-stream": {"schema": {"type": "string"}}},
+            "description": "A stream of Server-Sent Events.",
+        },
+    },
+)
+async def stream_existing_session(
+    session_uuid: str,
+    chat: ChatRequest,
+    correlation_id: str = Header(alias="X-Correlation-ID"),
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """Stream the clinical trials agent's response for an existing session as Server-Sent Events.
+
+    Continues an existing chat session and streams the agent's response in real-time using
+    Server-Sent Events. The client will receive events in the following format:
+    
+    - `data: {chunk}` - Response content chunks as they're generated
+    - `event: end_ok` - Final event indicating successful completion
+    - `event: end_error` - Final event indicating an error occurred
+    - `event: error` followed by `data: {error_message}` - Error details
+    
+    The complete response is automatically saved to the database after streaming completes.
+    
+    Args:
+        session_uuid: Unique identifier for the existing chat session
+        chat: The chat request containing the user's message text
+        correlation_id: Request correlation ID for tracing and logging
+        db: Database session for persisting chat data
+        
+    Returns:
+        StreamingResponse: A streaming response with content-type text/event-stream
+    """
+
+    return StreamingResponse(
+        post_turn_streamed(
+            session_uuid,
+            chat.text,
+            correlation_id,
+            db,
+        ),
+        media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
