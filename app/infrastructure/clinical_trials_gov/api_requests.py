@@ -9,7 +9,7 @@ from agents import function_tool
 from pydantic import ValidationError
 
 # Local modules
-from app.infrastructure.async_fetch import fetch_external_data
+from app.infrastructure.async_fetch import fetch_with_urllib
 
 # Base URL for the ClinicalTrials.gov API v2
 CTG_API_BASE_URL = "https://clinicaltrials.gov/api/v2"
@@ -243,7 +243,7 @@ async def list_studies(
 ) -> str | None:
     """Returns data of studies matching query and filter parameters.
 
-    Assumes 'json' format is used or fetch_external_data can handle others.
+    Assumes 'json' format is used or fetch_with_urllib can handle others.
     See: https://clinicaltrials.gov/api/v2/studies (GET)
 
     Args:
@@ -314,7 +314,7 @@ async def list_studies(
     }
 
     url = _build_ctg_url(CTG_API_BASE_URL, path, params)
-    data = await fetch_external_data(url)
+    data = fetch_with_urllib(url)
     if data:
         return str(data)
     return None
@@ -326,7 +326,7 @@ async def fetch_study(
 ) -> str | None:
     """Returns data of a single study by its NCT ID.
 
-    Assumes 'json' format is used or fetch_external_data can handle others.
+    Assumes 'json' format is used or fetch_with_urllib can handle others.
     See: https://clinicaltrials.gov/api/v2/studies/{nctId} (GET)
 
     Args:
@@ -347,7 +347,7 @@ async def fetch_study(
         "fields": None,
     }
     url = _build_ctg_url(CTG_API_BASE_URL, path, params)
-    data = await fetch_external_data(url)
+    data = await fetch_with_urllib(url)
     if data:
         try:
             return str(data)
