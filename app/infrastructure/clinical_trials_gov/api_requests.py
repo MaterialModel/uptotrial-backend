@@ -6,7 +6,7 @@ from urllib.parse import urlencode, urljoin
 from agents import function_tool
 
 # Third-party imports
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 # Local modules
 from app.infrastructure.async_fetch import fetch_with_urllib
@@ -144,6 +144,10 @@ AllowedField = Literal[
 
 SortDirection = Literal["asc", "desc"]
 
+class SortField(BaseModel):
+    field: AllowedField
+    direction: SortDirection
+
 
 # Helper function
 def _build_ctg_url(base_url: str, path: str, params: dict[str, Any] | None) -> str:
@@ -224,19 +228,17 @@ async def list_studies(
     query_id: Annotated[str | None, "Study IDs query (Essie syntax)"],
     query_patient: Annotated[str | None, "Patient search query (Essie syntax)"],
     filter_overall_status: Annotated[list[Status] | None, "List of statuses to filter by"],
-    filter_geo: Annotated[str | None, "Geo-distance filter function string. Format: distance(latitude,longitude,distance)"],
     filter_ids: Annotated[list[str] | None, "List of NCT IDs to filter by"],
     filter_advanced: Annotated[str | None, "Advanced filter query (Essie syntax)"],
     filter_synonyms: Annotated[list[str] | None, "List of synonym filters ('area:id')"],
     post_filter_overall_status: Annotated[list[Status] | None, "Post-aggregation status filter"],
-    post_filter_geo: Annotated[str | None, "Post-aggregation geo filter. Format: distance(latitude,longitude,distance) where latitude and longitude are decimal coordinates and distance is in km/mi"],
     post_filter_ids: Annotated[list[str] | None, "Post-aggregation NCT ID filter"],
     post_filter_advanced: Annotated[str | None, "Post-aggregation advanced filter"],
     post_filter_synonyms: Annotated[list[str] | None, "Post-aggregation synonym filter"],
     agg_filters: Annotated[str | None, "Aggregation filters string"],
     geo_decay: Annotated[str | None, "Geo decay function string"],
     fields: Annotated[list[AllowedField] | None, "List of specific fields to return (e.g., ['NCTId', 'BriefTitle', 'OverallStatus']). Returns default set if None"],
-    sort: Annotated[list[str] | None, "List of fields to sort by. Format: 'FieldName:direction' (e.g., 'LastUpdatePostDate:desc')"],
+    sort_fields: Annotated[list[SortField] | None, "List of fields to sort by. Format: 'FieldName:direction' (e.g., 'LastUpdatePostDate:desc')"],
     count_total: Annotated[bool | None, "Whether to return total count"],
     page_size: Annotated[int | None, "Number of studies per page. Defaults to 10. Max 1000"],
     page_token: Annotated[str | None, "Token for retrieving the next page"],
@@ -252,6 +254,14 @@ async def list_studies(
         A PagedStudies object containing the list of studies and pagination info, or None on error.
     """
     path = "/studies"
+    filter_geo = None
+    post_filter_geo = None
+
+    if sort_fields:
+        sort_strings: list[str | None] = [f"{s.field}:{s.direction}" for s in sort_fields]
+    else:
+        sort_strings = None
+
     params = {
         "format": "json",
         "markupFormat": "markdown",
@@ -278,7 +288,7 @@ async def list_studies(
         "aggFilters": agg_filters,
         "geoDecay": geo_decay,
         "fields": fields,
-        "sort": sort,
+        "sort": sort_strings,
         "countTotal": count_total,
         "pageSize": page_size,
         "pageToken": page_token,
