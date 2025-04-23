@@ -37,24 +37,19 @@ async_session_maker = async_sessionmaker(
 DeclarativeBase = declarative_base()
 
 
-async def inject_db() -> AsyncIterator[AsyncSession]:
+@asynccontextmanager
+async def create_db_session() -> AsyncIterator[AsyncSession]:
+    db = async_session_maker()
 
-    @asynccontextmanager
-    async def _get_db() -> AsyncIterator[AsyncSession]:
-        db = async_session_maker()
+    if not isinstance(db, AsyncSession):
+        raise TypeError(f"Expected AsyncSession, got {type(db)}")
 
-        if not isinstance(db, AsyncSession):
-            raise TypeError(f"Expected AsyncSession, got {type(db)}")
-
-        try:
-            yield db
-            await db.commit()
-        except Exception as e:
-            await asyncio.shield(db.rollback())
-            logger.error(f"Error in database transaction, rolling back: {e}")
-            raise
-        finally:
-            await db.close()
-
-    async with _get_db() as db:
+    try:
         yield db
+        await db.commit()
+    except Exception as e:
+        await asyncio.shield(db.rollback())
+        logger.error(f"Error in database transaction, rolling back: {e}")
+        raise
+    finally:
+        await db.close()

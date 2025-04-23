@@ -8,12 +8,16 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+import app.infrastructure.database.models
 from alembic import context
 from app.config import get_settings
 
 # Import base models and any model classes to be included in migrations
 from app.infrastructure.database.session import DeclarativeBase
-import app.infrastructure.database.models
+
+print("Models detected:")
+for model in app.infrastructure.database.models.__all__:
+    print(model)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

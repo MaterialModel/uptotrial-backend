@@ -5,19 +5,18 @@ allowing users to interact with the clinical trials agent, send messages,
 and retrieve conversation history.
 """
 
+
 from fastapi import APIRouter, Depends, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import AsyncGenerator
 
-
-from app.infrastructure.database import inject_db
+from app.api.deps import get_db
 from app.services.clinical_trials_agent.clinical_trials_agent import (
     ChatResponse,
     get_session_messages,
     post_turn,
-    post_turn_streamed
+    post_turn_streamed,
 )
 
 router = APIRouter()
@@ -37,7 +36,7 @@ class ChatRequest(BaseModel):
 @router.post("/chat", response_model=ChatResponse)
 async def post_chat_new_session(request: ChatRequest,
                                 correlation_id: str = Header(alias="X-Correlation-ID"),
-                                db: AsyncSession = Depends(inject_db)) -> ChatResponse:
+                                db: AsyncSession = Depends(get_db)) -> ChatResponse:
     """Process a new chat message and return the updated conversation.
 
     Handles incoming chat messages, processes them through the clinical trials agent,
@@ -50,7 +49,7 @@ async def post_chat_new_session(request: ChatRequest,
 async def post_chat_existing_session(session_uuid: str | None,
                                      request: ChatRequest,
                                      correlation_id: str = Header(alias="X-Correlation-ID"),
-                                     db: AsyncSession = Depends(inject_db)) -> ChatResponse:
+                                     db: AsyncSession = Depends(get_db)) -> ChatResponse:
     """Process a new chat message and return the updated conversation.
 
     Handles incoming chat messages, processes them through the clinical trials agent,
@@ -71,7 +70,7 @@ async def post_chat_existing_session(session_uuid: str | None,
 
 @router.get("/chat/{session_uuid}", response_model=ChatResponse)
 async def get_chat(session_uuid: str,
-                   db: AsyncSession = Depends(inject_db)) -> ChatResponse:
+                   db: AsyncSession = Depends(get_db)) -> ChatResponse:
     """Retrieve the conversation history for a specific chat session.
 
     Gets all messages for the specified chat session from the database.
@@ -86,31 +85,49 @@ async def get_chat(session_uuid: str,
     return await get_session_messages(session_uuid, db)
 
 
-@router.post("/chat/stream")
+@router.post(
+    "/stream",
+    responses={
+        200: {
+            "content": {"text/event-stream": {"schema": {"type": "string"}}},
+            "description": "A stream of Server-Sent Events.",
+        },
+    },
+)
 async def post_chat_stream(
     chat: ChatRequest,
     correlation_id: str = Header(alias="X-Correlation-ID"),
-    db: AsyncSession = Depends(inject_db),
+    db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
-    """
-    Streams the agent’s reply to the caller as Server-Sent Events (text/event-stream).
+    """Stream the clinical trials agent's response as Server-Sent Events.
+
+    Creates a new chat session and streams the agent's response in real-time using
+    Server-Sent Events. The client will receive events in the following format:
+    
+    - `session_uuid: {uuid}` - First event containing the session identifier
+    - `data: {chunk}` - Response content chunks as they're generated
+    - `event: end_ok` - Final event indicating successful completion
+    - `event: end_error` - Final event indicating an error occurred
+    - `event: error` followed by `data: {error_message}` - Error details
+    
+    The complete response is automatically saved to the database after streaming completes.
+    
+    Args:
+        chat: The chat request containing the user's message text
+        correlation_id: Request correlation ID for tracing and logging
+        db: Database session for persisting chat data
+        
+    Returns:
+        StreamingResponse: A streaming response with content-type text/event-stream
     """
 
-    async def event_stream() -> AsyncGenerator[str, None]:
-        async for chunk in post_turn_streamed(          # <- your generator
+    return StreamingResponse(
+        post_turn_streamed(          # <- your generator
             None,
             chat.text,
             correlation_id,
             db,
-        ):
-            # SSE framing: every message begins with “data:” and ends with a blank line
-            yield f"data: {chunk}\n\n"
-
-        # optional: tell the client we’re done
-        yield "event: end\ndata: ok\n\n"
-
-    return StreamingResponse(
-        event_stream(),                 # don’t await – pass the generator itself
+        ),                 # don't await - pass the generator itself
         media_type="text/event-stream", # correct MIME type for SSE
         headers={
             "Cache-Control": "no-cache",

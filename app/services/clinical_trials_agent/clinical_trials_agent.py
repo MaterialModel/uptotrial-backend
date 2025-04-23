@@ -162,7 +162,29 @@ async def post_turn_streamed(session_uuid: str | None,
                              text: str,
                              correlation_id: str,
                              db: AsyncSession) -> AsyncGenerator[str, None]:
-    """Post a turn to the database."""
+    """Stream a conversational turn with the Clinical Trials Agent.
+    
+    Creates a new session if none exists or continues an existing one.
+    Streams the agent's response chunks as they are generated and saves
+    the completed conversation turn to the database.
+    
+    Args:
+        session_uuid: Existing session UUID or None to create a new session
+        text: User input text for this conversation turn
+        correlation_id: Unique identifier for tracking this request
+        db: Database session for persistence operations
+        
+    Yields:
+        str: Special event markers and response chunks with these formats:
+            - "session_uuid: {uuid}" - First yield with session identifier
+            - "data: {chunk}" - Response content chunks
+            - "event: end_ok" - Final yield indicating stream completion
+            - "event: end_error" - Final yield indicating stream error
+            - "event: error" - Indicates an error occurred, will be followed by error message (via data).
+    Note:
+        Response chunks are concatenated and saved to the database only
+        after the entire response is generated.
+    """
 
     set_default_openai_key(settings.openai_api_key)
     agent = get_agent()
@@ -183,14 +205,25 @@ async def post_turn_streamed(session_uuid: str | None,
     messages.append({"role": "user", "content": text})
     chunks: list[str] = []
 
-    with trace("Clinical Trials Agent", trace_id=session.openai_trace_id) as trace_obj:
-        streamed_response = await Runner.run_streamed(agent, messages)  # type: ignore[arg-type]
-        session.openai_trace_id = trace_obj.trace_id
-        async for chunk in streamed_response:
-            yield chunk
-            chunks.append(chunk)
+    yield "session_uuid: " + session_uuid
 
-    await session.add_turn(text, ''.join(chunks), correlation_id, db)
+    with trace("Clinical Trials Agent", trace_id=session.openai_trace_id) as trace_obj:
+        streamed_response = Runner.run_streamed(agent, messages)  # type: ignore[arg-type]
+        session.openai_trace_id = trace_obj.trace_id
+        try:
+            async for chunk in streamed_response.stream_events():
+                if chunk.type=="raw_response_event" and chunk.data.type=="response.output_text.delta":
+                    yield "data: " + str(chunk.data.delta)
+                    chunks.append(chunk.data.delta)
+        except Exception as e:
+            yield "event: error"
+            yield "data: " + str(e)
+            yield "event: end_error"
+            return
+
+    output_message = {"role": "assistant", "content": "".join(chunks)}
+    await session.add_turn(text, output_message, correlation_id, db)
+    yield "event: end_ok"
     return
 
 
