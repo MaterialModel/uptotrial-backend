@@ -157,6 +157,43 @@ async def post_turn(session_uuid: str | None,
 
     return ChatResponse(messages=messages, session_uuid=session_uuid)
 
+
+async def post_turn_streamed(session_uuid: str | None,
+                             text: str,
+                             correlation_id: str,
+                             db: AsyncSession) -> AsyncGenerator[str, None]:
+    """Post a turn to the database."""
+
+    set_default_openai_key(settings.openai_api_key)
+    agent = get_agent()
+
+    if session_uuid is None:
+        # create new session
+        session_uuid = str(uuid.uuid4())
+        session = Session(session_uuid=session_uuid)
+        db.add(session)
+        await db.commit()
+    else:
+        result = await db.execute(select(Session).where(Session.session_uuid == session_uuid))
+        session = result.scalar_one()
+
+    dialogue_turns = await session.get_dialogue_turns(db)
+
+    messages = make_messages_from_dialogue_turns(dialogue_turns)
+    messages.append({"role": "user", "content": text})
+    chunks: list[str] = []
+
+    with trace("Clinical Trials Agent", trace_id=session.openai_trace_id) as trace_obj:
+        streamed_response = await Runner.run_streamed(agent, messages)  # type: ignore[arg-type]
+        session.openai_trace_id = trace_obj.trace_id
+        async for chunk in streamed_response:
+            yield chunk
+            chunks.append(chunk)
+
+    await session.add_turn(text, ''.join(chunks), correlation_id, db)
+    return
+
+
 async def get_session_messages(session_uuid: str, db: AsyncSession) -> ChatResponse:
     """Get all messages from a session."""
 
