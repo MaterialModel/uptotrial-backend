@@ -12,6 +12,13 @@
             "program": "${workspaceFolder}/uptotrial.py",
             "args": ["chat"],
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug UpToTrial Chat API",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/debug_api.py",
+            "console": "integratedTerminal"
         }
     ]
 }

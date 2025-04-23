@@ -1,6 +1,5 @@
 """Database package."""
 
-from app.infrastructure.database.models import Base
-from app.infrastructure.database.session import get_db_session
+from app.infrastructure.database.session import inject_db
 
-__all__ = ["Base", "get_db_session"]
+__all__ = ["inject_db"]

@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import AsyncGenerator
 from functools import lru_cache
 from typing import cast
@@ -13,18 +14,28 @@ from agents import (
     set_default_openai_key,
     trace,
 )
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.infrastructure.clinical_trials_gov.api_requests import (
     fetch_study,
     list_studies,
 )
+from app.infrastructure.database.models import DialogueTurn, Session
 from app.services.clinical_trials_agent import GPT_41_MINI, template_manager
 
 ToolType = FunctionTool | FileSearchTool | WebSearchTool | ComputerTool
 
 settings = get_settings()
 
+
+class ChatResponse(BaseModel):
+    """Chat response model."""
+
+    messages: list[dict]
+    session_uuid: str
 
 @lru_cache(maxsize=1)
 def get_agent() -> Agent:
@@ -103,3 +114,53 @@ async def conversation() -> AsyncGenerator[str | None, str | None]:
                 if resp.final_output is not None
                 else "(Agent did not generate a text response)"
             )
+
+def make_messages_from_dialogue_turns(dialogue_turns: list[DialogueTurn]) -> list[dict]:
+    messages = []
+    for dialogue_turn in dialogue_turns:
+        messages.append({"role": "user", "content": dialogue_turn.request_text})
+        messages.append(dialogue_turn.response_data)
+    return messages
+
+
+async def post_turn(session_uuid: str | None,
+                    text: str,
+                    correlation_id: str,
+                    db: AsyncSession) -> ChatResponse:
+    """Post a turn to the database."""
+
+    set_default_openai_key(settings.openai_api_key)
+    agent = get_agent()
+
+    if session_uuid is None:
+        # create new session
+        session_uuid = str(uuid.uuid4())
+        session = Session(session_uuid=session_uuid)
+        db.add(session)
+        await db.commit()
+    else:
+        result = await db.execute(select(Session).where(Session.session_uuid == session_uuid))
+        session = result.scalar_one()
+
+    dialogue_turns = await session.get_dialogue_turns(db)
+
+    messages = make_messages_from_dialogue_turns(dialogue_turns)
+    messages.append({"role": "user", "content": text})
+
+    with trace("Clinical Trials Agent", trace_id=session_uuid):
+        resp = await Runner.run(agent, messages)  # type: ignore[arg-type]
+        output_message = {"role": "assistant", "content": resp.final_output}
+        messages.append(output_message)
+
+    await session.add_turn(text, output_message, correlation_id, db)
+
+    return ChatResponse(messages=messages, session_uuid=session_uuid)
+
+async def get_session_messages(session_uuid: str, db: AsyncSession) -> ChatResponse:
+    """Get all messages from a session."""
+
+    session = await db.execute(select(Session).where(Session.session_uuid == session_uuid))
+    session = session.scalar_one()
+    dialogue_turns = await session.get_dialogue_turns(db)
+    return ChatResponse(messages=make_messages_from_dialogue_turns(dialogue_turns),
+                             session_uuid=session_uuid)

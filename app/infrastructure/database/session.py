@@ -1,6 +1,8 @@
 """Database session management."""
 
-from collections.abc import AsyncGenerator
+import asyncio
+import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
@@ -11,6 +13,8 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.ext.declarative import declarative_base
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -32,19 +36,25 @@ async_session_maker = async_sessionmaker(
 
 DeclarativeBase = declarative_base()
 
-@asynccontextmanager
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get database session.
 
-    Yields:
-        AsyncSession: Database session.
-    """
-    session = async_session_maker()
-    try:
-        yield session
-        await session.commit()
-    except Exception:
-        await session.rollback()
-        raise
-    finally:
-        await session.close()
+async def inject_db() -> AsyncIterator[AsyncSession]:
+
+    @asynccontextmanager
+    async def _get_db() -> AsyncIterator[AsyncSession]:
+        db = async_session_maker()
+
+        if not isinstance(db, AsyncSession):
+            raise TypeError(f"Expected AsyncSession, got {type(db)}")
+
+        try:
+            yield db
+            await db.commit()
+        except Exception as e:
+            await asyncio.shield(db.rollback())
+            logger.error(f"Error in database transaction, rolling back: {e}")
+            raise
+        finally:
+            await db.close()
+
+    async with _get_db() as db:
+        yield db

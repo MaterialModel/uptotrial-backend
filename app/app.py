@@ -3,10 +3,10 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api.errors import register_exception_handlers
-from app.api.middleware import register_middleware
 from app.api.router import api_router
 from app.config import Settings
 
@@ -24,14 +24,27 @@ def create_app(settings: Settings) -> FastAPI:
         openapi_url=settings.openapi_url,
         redoc_url=None,
     )
-
-    # Register middleware
-    logger.debug("Registering middleware")
-    register_middleware(app)
     
     # Register exception handlers
     logger.debug("Registering exception handlers")
     register_exception_handlers(app)
+
+    # Add CORS middleware
+    logger.debug("Adding CORS middleware")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000",
+                       "http://localhost:8000",
+                       "http://127.0.0.1:3000",
+                       "http://127.0.0.1:8000",
+                       "http://localhost:5173",
+                       "http://127.0.0.1:5173",
+                       "http://localhost:5174",
+                       "http://127.0.0.1:5174"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     # Include API router
     logger.debug("Including API router with prefix: %s", settings.api_prefix)

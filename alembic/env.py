@@ -12,7 +12,7 @@ from alembic import context
 from app.config import get_settings
 
 # Import base models and any model classes to be included in migrations
-from app.infrastructure.database.models.base import Base
+from app.infrastructure.database.session import DeclarativeBase
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -27,7 +27,7 @@ if config.config_file_name is not None:
 settings = get_settings()
 
 # Target metadata
-target_metadata = Base.metadata
+target_metadata = DeclarativeBase.metadata
 
 # Set database URL from settings
 db_url = settings.database_url
