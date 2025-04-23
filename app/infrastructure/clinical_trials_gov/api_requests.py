@@ -35,6 +35,116 @@ Status = Literal[
     "UNKNOWN",
 ]
 
+# Expanded list of common/useful fields based on CTG documentation
+AllowedField = Literal[
+    # Identification
+    "NCTId",
+    "OrgStudyId", # Assuming this corresponds to Study IDs mentioned
+    "SecondaryIdInfo", # Often related to other IDs
+    "Acronym",
+
+    # Titles & Summaries
+    "BriefTitle",
+    "OfficialTitle",
+    "BriefSummary",
+    "DetailedDescription", # Common field, likely available
+
+    # Status & Dates
+    "OverallStatus",
+    "LastKnownStatus",
+    "StartDate",
+    "PrimaryCompletionDate", # Common field, likely available
+    "CompletionDate",
+    "StudyFirstPostDate", # Common field, likely available
+    "ResultsFirstPostDate",
+    "LastUpdatePostDate",
+
+    # Study Design
+    "Phase", # Common field, likely available
+    "StudyType", # Common field, likely available
+    "DesignInfo", # Often contains design details
+    "TargetDuration", # Common field, likely available
+
+    # Conditions & Keywords
+    "Condition",
+    "ConditionMeshTerm",
+    "ConditionAncestorTerm",
+    "Keyword",
+
+    # Interventions
+    "InterventionName",
+    "InterventionType",
+    "InterventionDescription", # Common field, likely available
+    "InterventionOtherName",
+    "ArmGroupInterventionName", # For specific arms
+
+    # Outcomes
+    "PrimaryOutcomeMeasure",
+    "PrimaryOutcomeDescription", # Often paired with measure
+    "PrimaryOutcomeTimeFrame", # Often paired with measure
+    "SecondaryOutcomeMeasure",
+    "SecondaryOutcomeDescription",
+    "SecondaryOutcomeTimeFrame",
+    "OtherOutcomeMeasure",
+
+    # Eligibility & Enrollment
+    "EligibilityCriteria", # Common field, likely available
+    "Gender", # Common field, likely available
+    "MinimumAge", # Common field, likely available
+    "MaximumAge", # Common field, likely available
+    "StdAge",
+    "HealthyVolunteers", # Common field, likely available
+    "EnrollmentCount", # Common field, likely available
+    "EnrollmentType",
+
+    # Locations & Contacts
+    "LocationFacility", # Corresponds to Facility Name search
+    "LocationCity",
+    "LocationState",
+    "LocationZip", # Common field, likely available
+    "LocationCountry",
+    "LocationStatus",
+    "LocationContactName", # Common field, likely available
+    "LocationContactPhone", # Common field, likely available
+    "LocationContactEMail", # Common field, likely available
+    "CentralContactName", # Often exists for overall contact
+    "CentralContactPhone",
+    "CentralContactEMail",
+    "OverallOfficialName", # Often exists for main investigator
+    "OverallOfficialAffiliation",
+    "OverallOfficialRole",
+
+    # Sponsor & Collaborators
+    "LeadSponsorName",
+    "LeadSponsorClass",
+    "CollaboratorName", # Common field, likely available
+    "CollaboratorClass",
+
+    # Responsible Party
+    "ResponsiblePartyType", # Common field, likely available
+    "ResponsiblePartyInvestigatorFullName",
+    "ResponsiblePartyInvestigatorTitle",
+    "ResponsiblePartyInvestigatorAffiliation",
+
+    # Results & References
+    "ResultsReferenceCitation", # Common field, likely available
+    "ResultsReferencePMID", # Common field, likely available
+    "SeeAlsoLinkURL", # Common field, likely available
+    "SeeAlsoLinkLabel", # Common field, likely available
+
+    # IPD Sharing
+    "IPDSharing",
+    "IPDSharingInfoType",
+    "IPDSharingURL", # Often paired with sharing statement
+
+    # Misc
+    "StudyDocuments", # If document info is available
+    "PointOfContactEMail", # General contact
+]
+
+SortDirection = Literal["asc", "desc"]
+
+
 # Helper function
 def _build_ctg_url(base_url: str, path: str, params: dict[str, Any] | None) -> str:
     """Builds the full URL for a CTG API request, handling parameter encoding.
@@ -125,7 +235,7 @@ async def list_studies(
     post_filter_synonyms: list[str] | None,
     agg_filters: str | None,
     geo_decay: str | None,
-    fields: list[str] | None,
+    fields: list[AllowedField] | None,
     sort: list[str] | None,
     count_total: bool | None,
     page_size: int | None,
@@ -152,15 +262,15 @@ async def list_studies(
         filter_ids: List of NCT IDs to filter by. Defaults to None.
         filter_advanced: Advanced filter query (Essie syntax). Defaults to None.
         filter_synonyms: List of synonym filters ('area:id'). Defaults to None.
-        post_filter_overall_status: Post-aggregation status filter. Defaults to None.
+        post_filter_overall_status: Post-aggregation status filter. Uses Status literal. Defaults to None.
         post_filter_geo: Post-aggregation geo filter. Defaults to None.
         post_filter_ids: Post-aggregation NCT ID filter. Defaults to None.
         post_filter_advanced: Post-aggregation advanced filter. Defaults to None.
         post_filter_synonyms: Post-aggregation synonym filter. Defaults to None.
         agg_filters: Aggregation filters string. Defaults to None.
         geo_decay: Geo decay function string. Defaults to None.
-        fields: List of fields to return. Defaults to None.
-        sort: List of fields to sort by (e.g., 'LastUpdatePostDate:desc'). Defaults to None.
+        fields: List of specific fields to return (e.g., ["NCTId", "BriefTitle", "OverallStatus"]). Uses AllowedField literal. Defaults to None (returns default set).
+        sort: List of fields to sort by. Format: 'FieldName:direction' where FieldName is from AllowedField and direction is from SortDirection (e.g., 'LastUpdatePostDate:desc'). Defaults to None.
         count_total: Whether to return total count. Defaults to False.
         page_size: Number of studies per page. Defaults to 10. Max 1000.
         page_token: Token for retrieving the next page. Defaults to None.

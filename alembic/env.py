@@ -13,6 +13,7 @@ from app.config import get_settings
 
 # Import base models and any model classes to be included in migrations
 from app.infrastructure.database.session import DeclarativeBase
+import app.infrastructure.database.models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

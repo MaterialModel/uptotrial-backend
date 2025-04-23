@@ -103,6 +103,7 @@ class Session(DeclarativeBase):
     head_turn_id: Mapped[int] = mapped_column(ForeignKey("dialogue_turns.id"), nullable=True)
     session_uuid: Mapped[str] = mapped_column(String, nullable=False, index=True, unique=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
+    openai_trace_id: Mapped[str] = mapped_column(String, nullable=True)
 
     async def get_dialogue_turns(self, db: AsyncSession) -> list[DialogueTurn]:
         """Get all dialogue turns for this session using a recursive CTE with SQLAlchemy ORM.

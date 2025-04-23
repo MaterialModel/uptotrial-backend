@@ -147,10 +147,11 @@ async def post_turn(session_uuid: str | None,
     messages = make_messages_from_dialogue_turns(dialogue_turns)
     messages.append({"role": "user", "content": text})
 
-    with trace("Clinical Trials Agent", trace_id=session_uuid):
+    with trace("Clinical Trials Agent", trace_id=session.openai_trace_id) as trace_obj:
         resp = await Runner.run(agent, messages)  # type: ignore[arg-type]
         output_message = {"role": "assistant", "content": resp.final_output}
         messages.append(output_message)
+        session.openai_trace_id = trace_obj.trace_id
 
     await session.add_turn(text, output_message, correlation_id, db)
 

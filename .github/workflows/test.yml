@@ -42,6 +42,6 @@ jobs:
       - name: Test with tox
         run: tox
         env:
-          TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/uptotrial_test
+          TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/uptotrial_test
           ENVIRONMENT: testing
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test-key' }}

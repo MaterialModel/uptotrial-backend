@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = Field(
-        default="postgresql+psycopg://postgres:postgres@localhost:5432/uptotrial",
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/uptotrial",
         description="Database connection string",
     )
     database_pool_size: int = 5
