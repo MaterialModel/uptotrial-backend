@@ -263,4 +263,4 @@ async def get_session_messages(session_uuid: str, db: AsyncSession) -> ChatRespo
     session = session.scalar_one()
     dialogue_turns = await session.get_dialogue_turns(db)
     return ChatResponse(messages=make_messages_from_dialogue_turns(dialogue_turns),
-                             session_uuid=session_uuid)
+                        session_uuid=session_uuid)
