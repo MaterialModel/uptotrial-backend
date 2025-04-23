@@ -101,13 +101,14 @@ async def stream_new_session(
     """Stream the clinical trials agent's response for a new session as Server-Sent Events.
 
     Creates a new chat session and streams the agent's response in real-time using
-    Server-Sent Events. The client will receive events in the following format:
+    Server-Sent Events. The client will receive events in the following XML-like format:
     
-    - `session_uuid: {uuid}` - First event containing the session identifier
-    - `data: {chunk}` - Response content chunks as they're generated
-    - `event: end_ok` - Final event indicating successful completion
-    - `event: end_error` - Final event indicating an error occurred
-    - `event: error` followed by `data: {error_message}` - Error details
+    - `<event><key>session_uuid</key><value>{uuid}</value></event>` - First event with session identifier
+    - `<event><key>data</key><value>{chunk}</value></event>` - Response content chunks
+    - `<event><key>event</key><value>end_ok</value></event>` - Final event indicating successful completion
+    - `<event><key>event</key><value>end_error</value></event>` - Final event indicating an error occurred
+    - `<event><key>event</key><value>error</value></event>` followed by 
+      `<event><key>data</key><value>{error_message}</value></event>` - Error details
     
     The complete response is automatically saved to the database after streaming completes.
     
@@ -153,12 +154,14 @@ async def stream_existing_session(
     """Stream the clinical trials agent's response for an existing session as Server-Sent Events.
 
     Continues an existing chat session and streams the agent's response in real-time using
-    Server-Sent Events. The client will receive events in the following format:
+    Server-Sent Events. The client will receive events in the following XML-like format:
     
-    - `data: {chunk}` - Response content chunks as they're generated
-    - `event: end_ok` - Final event indicating successful completion
-    - `event: end_error` - Final event indicating an error occurred
-    - `event: error` followed by `data: {error_message}` - Error details
+    - `<event><key>session_uuid</key><value>{uuid}</value></event>` - For reference (new sessions only)
+    - `<event><key>data</key><value>{chunk}</value></event>` - Response content chunks
+    - `<event><key>event</key><value>end_ok</value></event>` - Final event indicating successful completion
+    - `<event><key>event</key><value>end_error</value></event>` - Final event indicating an error occurred
+    - `<event><key>event</key><value>error</value></event>` followed by 
+      `<event><key>data</key><value>{error_message}</value></event>` - Error details
     
     The complete response is automatically saved to the database after streaming completes.
     

@@ -157,6 +157,33 @@ async def post_turn(session_uuid: str | None,
 
     return ChatResponse(messages=messages, session_uuid=session_uuid)
 
+def make_sse_event(key: str, value: str) -> str:
+    """Format a message as an XML-like event for streaming.
+    
+    Uses a custom XML format that safely encodes data which may contain
+    newlines or special characters, preventing parsing errors.
+    
+    Args:
+        key: The event type or field name (e.g., 'session_uuid', 'data', 'event')
+        value: The data payload, which may contain newlines or special characters
+        
+    Returns:
+        str: Formatted XML-like event string in the format:
+             <event><key>{key}</key><value>{value}</value></event>
+             
+    Note:
+        The function automatically escapes XML entities like &, <, >, ", and '
+        to ensure valid XML formatting.
+    """
+    # Escape XML entities to prevent parsing issues
+    escaped_value = (value
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;"))
+    
+    return f"<event><key>{key}</key><value>{escaped_value}</value></event>"
 
 async def post_turn_streamed(session_uuid: str | None,
                              text: str,
@@ -175,12 +202,14 @@ async def post_turn_streamed(session_uuid: str | None,
         db: Database session for persistence operations
         
     Yields:
-        str: Special event markers and response chunks with these formats:
-            - "session_uuid: {uuid}" - First yield with session identifier
-            - "data: {chunk}" - Response content chunks
-            - "event: end_ok" - Final yield indicating stream completion
-            - "event: end_error" - Final yield indicating stream error
-            - "event: error" - Indicates an error occurred, will be followed by error message (via data).
+        str: XML-like event markers and response chunks with these formats:
+            - `<event><key>session_uuid</key><value>{uuid}</value></event>` - First yield with session identifier
+            - `<event><key>data</key><value>{chunk}</value></event>` - Response content chunks
+            - `<event><key>event</key><value>end_ok</value></event>` - Final yield indicating stream completion
+            - `<event><key>event</key><value>end_error</value></event>` - Final yield indicating stream error
+            - `<event><key>event</key><value>error</value></event>` followed by 
+              `<event><key>data</key><value>{error_message}</value></event>` - Error details
+    
     Note:
         Response chunks are concatenated and saved to the database only
         after the entire response is generated.
@@ -205,7 +234,7 @@ async def post_turn_streamed(session_uuid: str | None,
     messages.append({"role": "user", "content": text})
     chunks: list[str] = []
 
-    yield "session_uuid: " + session_uuid
+    yield make_sse_event("session_uuid", session_uuid)
 
     with trace("Clinical Trials Agent", trace_id=session.openai_trace_id) as trace_obj:
         streamed_response = Runner.run_streamed(agent, messages)  # type: ignore[arg-type]
@@ -213,12 +242,12 @@ async def post_turn_streamed(session_uuid: str | None,
         try:
             async for chunk in streamed_response.stream_events():
                 if chunk.type=="raw_response_event" and chunk.data.type=="response.output_text.delta":
-                    yield "data: " + str(chunk.data.delta)
+                    yield make_sse_event("data", str(chunk.data.delta))
                     chunks.append(chunk.data.delta)
         except Exception as e:
-            yield "event: error"
-            yield "data: " + str(e)
-            yield "event: end_error"
+            yield make_sse_event("event", "error")
+            yield make_sse_event("data", str(e))
+            yield make_sse_event("event", "end_error")
             return
 
     output_message = {"role": "assistant", "content": "".join(chunks)}
