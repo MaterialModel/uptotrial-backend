@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str = Field(default="", description="OpenAI API key")
 
+    # Google Places API
+    google_places_api_key: str = Field(default="", description="Google Places API key")
+
     # Security
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
     rate_limit_period_seconds: int = 60  # Time window for rate limiting

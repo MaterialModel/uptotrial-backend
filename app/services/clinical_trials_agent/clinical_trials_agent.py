@@ -23,6 +23,7 @@ from app.infrastructure.clinical_trials_gov.api_requests import (
     fetch_study,
     list_studies,
 )
+from app.infrastructure.googleapi.place_api import search_places
 from app.infrastructure.database.models import DialogueTurn, Session
 from app.services.clinical_trials_agent import GPT_41_MINI, template_manager
 
@@ -52,10 +53,11 @@ def get_agent() -> Agent:
     ctg_tools = [
         list_studies,
         fetch_study,
+        search_places
     ]
 
     hosted_tools = [
-        WebSearchTool(),
+        WebSearchTool(search_context_size="high"),
     ]
 
     agent_system_prompt = template_manager.render("clinical_trials_agent.jinja")
@@ -181,8 +183,8 @@ def make_sse_event(key: str, value: str) -> str:
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
-        .replace("'", "&apos;"))
-    
+        .replace("'", "&apos;")
+        .replace("openai.com", "uptotrial.com")) 
     return f"<event><key>{key}</key><value>{escaped_value}</value></event>"
 
 async def post_turn_streamed(session_uuid: str | None,
@@ -239,32 +241,35 @@ async def post_turn_streamed(session_uuid: str | None,
     with trace("Clinical Trials Agent", trace_id=session.openai_trace_id) as trace_obj:
         streamed_response = Runner.run_streamed(agent, messages)  # type: ignore[arg-type]
         session.openai_trace_id = trace_obj.trace_id
+        last_function_call = "Unknown"
         try:
             async for chunk in streamed_response.stream_events():
-                if chunk.type == 'raw_response_event':
+                if chunk.type == "raw_response_event":
                     if chunk.data.type == "response.output_text.delta":
                         yield make_sse_event("data", str(chunk.data.delta))
                         chunks.append(chunk.data.delta)
                     elif (chunk.data.type == "response.output_item.added"
-                          and chunk.data.item.type == 'function_call'
-                          and chunk.data.item.name == 'list_studies'):
-                        item_name = '\n> Searching ClinicalTrials.gov for studies...\n\n'
+                          and chunk.data.item.type == "function_call"
+                          and chunk.data.item.name == "list_studies"):
+                        item_name = "\n> Searching ClinicalTrials.gov for studies...\n\n"
+                        last_function_call = "list_studies"
                         yield make_sse_event("data", item_name)
                         chunks.append(item_name)
                     elif (chunk.data.type == "response.output_item.added"
-                          and chunk.data.item.type == 'function_call'
-                          and chunk.data.item.name == 'fetch_study'):
-                        item_name = '\n> Fetching a study from ClinicalTrials.gov...\n\n'
+                          and chunk.data.item.type == "function_call"
+                          and chunk.data.item.name == "fetch_study"):
+                        item_name = "\n> Fetching a study from ClinicalTrials.gov...\n\n"
+                        last_function_call = "fetch_study"
                         yield make_sse_event("data", item_name)
                         chunks.append(item_name)
-                    elif (chunk.data.type == 'response.function_call_arguments.delta'):
+                    elif (chunk.data.type == "response.function_call_arguments.delta"):
                         pass
-                    elif (chunk.data.type == 'response.function_call_arguments.done'):
-                        item_name = f'\n> {chunk.data.arguments}\n\n'
+                    elif (chunk.data.type == "response.function_call_arguments.done"):
+                        item_name = f"\n> {last_function_call}({chunk.data.arguments})\n\n"
                         yield make_sse_event("data", item_name)
                         chunks.append(item_name)
-                    elif chunk.data.type == 'response.web_search_call.searching':
-                        item_name = '\n> Searching the web for more information...\n\n'
+                    elif chunk.data.type == "response.web_search_call.searching":
+                        item_name = "\n> Searching the web for more information...\n\n"
                         yield make_sse_event("data", item_name)
                         chunks.append(item_name)
                     else:

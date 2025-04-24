@@ -93,7 +93,8 @@ ignore = ["ANN401", "E501", "RET504",
           "ARG001", "TRY003", "PLR2004",
           "EM102", "PLR0913", "B008",
           "TRY400", "RUF200", "N815",
-          "G004", "EM101"]
+          "G004", "EM101", "PLR0912",
+          "PLR0915"]
 
 [tool.mypy]
 python_version = "3.12"

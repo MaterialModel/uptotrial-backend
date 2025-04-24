@@ -1,11 +1,10 @@
-from typing import Any, cast
-import json
-import urllib.request
+import logging
 import urllib.error
+import urllib.request
 from urllib.parse import urlparse
 
-
-def fetch_with_urllib(url: str, timeout: int = 30) -> dict[str, Any] | None:
+logger = logging.getLogger(__name__)
+def fetch_with_urllib(url: str, timeout: int = 30) -> str | None:
     """Fetches data using the standard library's urllib.
     
     This function doesn't depend on httpx and uses only standard library components.
@@ -15,7 +14,7 @@ def fetch_with_urllib(url: str, timeout: int = 30) -> dict[str, Any] | None:
         timeout: Request timeout in seconds.
 
     Returns:
-        A dictionary containing the JSON response, or None if an error occurs.
+        A string containing the raw response content, or None if an error occurs.
         Logs errors encountered during the request.
 
     Raises:
@@ -24,24 +23,22 @@ def fetch_with_urllib(url: str, timeout: int = 30) -> dict[str, Any] | None:
     """
     
     try:
-        print(f"Attempting to fetch data from: {url}")
+        logger.debug(f"Attempting to fetch data from: {url}")
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=timeout) as response:
             status_code = response.getcode()
-            print(f"Successfully fetched data, status code: {status_code}")
-            data = response.read().decode('utf-8')
-            return cast(dict[str, Any], json.loads(data))
+            logger.debug(f"Successfully fetched data, status code: {status_code}")
+            raw_data = response.read()
+            data = raw_data.decode("utf-8")
+            return data
     except urllib.error.HTTPError as e:
-        print(f"HTTP error occurred: {e.code} - {e.read().decode('utf-8')}")
+        logger.error(f"HTTP error occurred: {e.code} - {e.read().decode('utf-8')}")
         raise
     except urllib.error.URLError as e:
-        print(f"URL error occurred: {e.reason}")
+        logger.error(f"URL error occurred: {e.reason}")
         parsed_url = urlparse(url)
-        print(f"URL components: scheme={parsed_url.scheme}, netloc={parsed_url.netloc}")
-        raise
-    except json.JSONDecodeError as e:
-        print(f"JSON decode error: {e}")
+        logger.error(f"URL components: scheme={parsed_url.scheme}, netloc={parsed_url.netloc}")
         raise
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        logger.error(f"An unexpected error occurred: {e}")
         raise

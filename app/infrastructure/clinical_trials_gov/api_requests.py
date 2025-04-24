@@ -1,15 +1,15 @@
 # Standard library imports first
 import logging
-from typing import Any, Annotated, Literal
+from typing import Annotated, Any, Literal
 from urllib.parse import urlencode, urljoin
 
 from agents import function_tool
 
 # Third-party imports
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 # Local modules
-from app.infrastructure.async_fetch import fetch_with_urllib
+from app.infrastructure.fetch import fetch_with_urllib
 
 # Base URL for the ClinicalTrials.gov API v2
 CTG_API_BASE_URL = "https://clinicaltrials.gov/api/v2"
@@ -295,10 +295,7 @@ async def list_studies(
     }
 
     url = _build_ctg_url(CTG_API_BASE_URL, path, params)
-    data = fetch_with_urllib(url)
-    if data:
-        return str(data)
-    return None
+    return fetch_with_urllib(url)
 
 
 @function_tool
@@ -325,11 +322,4 @@ async def fetch_study(
         "fields": None,
     }
     url = _build_ctg_url(CTG_API_BASE_URL, path, params)
-    data = await fetch_with_urllib(url)
-    if data:
-        try:
-            return str(data)
-        except ValidationError as e:
-            logger.error(f"Pydantic validation error for fetch_study ({nct_id}): {e}")
-            return None
-    return None
+    return fetch_with_urllib(url)
