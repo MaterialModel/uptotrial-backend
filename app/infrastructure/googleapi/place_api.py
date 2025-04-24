@@ -1,5 +1,6 @@
 import json
 from typing import Annotated, TypeVar
+from urllib.parse import quote
 
 from agents import function_tool
 
@@ -10,16 +11,18 @@ settings = get_settings()
 
 T = TypeVar("T", bound=dict | list)
 
-def recursive_remove_key(d: T, key: str) -> T:
+
+def recursive_remove_key(d: T, keys: list[str]) -> T:
     if isinstance(d, dict):
-        for k, v in d.items():
-            if  key in k:
-                del d[k]
-            elif isinstance(v, dict | list):
-                recursive_remove_key(v, key)
+        keys_to_remove = [k for k in d.keys() if any(key in k for key in keys)]
+        for k in keys_to_remove:
+            del d[k]
+        for v in d.values():
+            if isinstance(v, dict | list):
+                recursive_remove_key(v, keys)
     elif isinstance(d, list):
         for item in d:
-            recursive_remove_key(item, key)
+            recursive_remove_key(item, keys)
     return d
 
 
@@ -31,13 +34,14 @@ def search_places(query: Annotated[str, "The text string to search for (e.g., 'B
     Returns:
         dict: Response from Google Places API containing search results
     """
-    url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={query}&key={settings.google_places_api_key}"
+    encoded_query = quote(query)
+    url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={encoded_query}&key={settings.google_places_api_key}"
     val = fetch_with_urllib(url)
     if val:
         try:
             d = json.loads(val)
             assert isinstance(d, dict | list)
-            d = recursive_remove_key(d, "photo")
+            d = recursive_remove_key(d, ["photo", "icon"])
             return json.dumps(d)
         except json.JSONDecodeError:
             pass
