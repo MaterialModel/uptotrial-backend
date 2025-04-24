@@ -241,9 +241,36 @@ async def post_turn_streamed(session_uuid: str | None,
         session.openai_trace_id = trace_obj.trace_id
         try:
             async for chunk in streamed_response.stream_events():
-                if chunk.type=="raw_response_event" and chunk.data.type=="response.output_text.delta":
-                    yield make_sse_event("data", str(chunk.data.delta))
-                    chunks.append(chunk.data.delta)
+                if chunk.type == 'raw_response_event':
+                    if chunk.data.type == "response.output_text.delta":
+                        yield make_sse_event("data", str(chunk.data.delta))
+                        chunks.append(chunk.data.delta)
+                    elif (chunk.data.type == "response.output_item.added"
+                          and chunk.data.item.type == 'function_call'
+                          and chunk.data.item.name == 'list_studies'):
+                        item_name = '\n> Searching ClinicalTrials.gov for studies...\n\n'
+                        yield make_sse_event("data", item_name)
+                        chunks.append(item_name)
+                    elif (chunk.data.type == "response.output_item.added"
+                          and chunk.data.item.type == 'function_call'
+                          and chunk.data.item.name == 'fetch_study'):
+                        item_name = '\n> Fetching a study from ClinicalTrials.gov...\n\n'
+                        yield make_sse_event("data", item_name)
+                        chunks.append(item_name)
+                    elif (chunk.data.type == 'response.function_call_arguments.delta'):
+                        pass
+                    elif (chunk.data.type == 'response.function_call_arguments.done'):
+                        item_name = f'\n> {chunk.data.arguments}\n\n'
+                        yield make_sse_event("data", item_name)
+                        chunks.append(item_name)
+                    elif chunk.data.type == 'response.web_search_call.searching':
+                        item_name = '\n> Searching the web for more information...\n\n'
+                        yield make_sse_event("data", item_name)
+                        chunks.append(item_name)
+                    else:
+                        pass
+                else:
+                    pass
         except Exception as e:
             yield make_sse_event("event", "error")
             yield make_sse_event("data", str(e))
