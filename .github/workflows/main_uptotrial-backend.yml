@@ -24,13 +24,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Create and start virtual environment
+      - name: Poetry install
         run: |
-          pip install uv
-          uv venv
-      
-      - name: Install dependencies
-        run: uv sync
+          pip install poetry
+          poetry env use python3.12 
+          poetry install
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
@@ -43,7 +41,6 @@ jobs:
           name: python-app
           path: |
             release.zip
-            !venv/
 
   deploy:
     runs-on: ubuntu-latest
