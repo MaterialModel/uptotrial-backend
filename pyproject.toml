@@ -13,6 +13,7 @@ packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13"
+gunicorn = "22.0.0"
 alembic = "1.15.2"
 annotated-types = "0.7.0"
 anyio = "4.9.0"
@@ -76,6 +77,9 @@ tox = ">=4.12.1"
 black = ">=24.2.0"
 isort = ">=5.13.2"
 pre-commit = ">=3.6.0"
+
+[tool.poetry.scripts]
+serve = "gunicorn.app.wsgiapp:run"
 
 [tool.ruff]
 target-version = "py312"
