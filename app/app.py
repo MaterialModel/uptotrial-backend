@@ -50,7 +50,7 @@ def create_app(settings: Settings) -> FastAPI:
     logger.debug("Including API router with prefix: %s", settings.api_prefix)
     app.include_router(api_router, prefix=settings.api_prefix)
 
-    @app.get("/")
+    @app.get("/", response_model=dict[str, str])
     async def root() -> dict[str, str]:
         logger.debug("Root endpoint called")
         return {"message": "Welcome to UpToTrial API. See /docs for API documentation."}

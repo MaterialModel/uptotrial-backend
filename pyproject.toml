@@ -9,7 +9,7 @@ description = "FastAPI-based Clinical Trials Search API"
 readme = "README.md"
 authors = ["UpToTrial Team"]
 license = "Proprietary"
-packages = [{include = "app"}]
+packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13"
@@ -34,7 +34,7 @@ mdurl = "0.1.2"
 openai = "1.75.0"
 asyncpg = "0.30.0"
 greenlet = "3.2.1"
-pydantic = "2.11.3"
+pydantic = { version = "2.11.3", extras = ["mypy"] }   # enables pydantic.mypy
 pydantic-core = "2.33.1"
 pydantic-settings = "2.9.1"
 pygments = "2.19.1"
@@ -74,6 +74,7 @@ pytest-asyncio = ">=0.21.0"
 ruff = ">=0.2.2"
 mypy = ">=1.8.0"
 tox = ">=4.12.1"
+tox-poetry-installer = { version = "1.0.0b1", extras = ["poetry"] }
 black = ">=24.2.0"
 isort = ">=5.13.2"
 pre-commit = ">=3.6.0"
@@ -88,13 +89,19 @@ line-length = 88
 exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
-select = ["E", "F", "B", "I", "N", "UP", "ANN", "PTH", "FBT", "A", "COM", "C4", "DTZ", "T10", "EM", "ISC", "ICN", "G", "PIE", "PYI", "PT", "Q", "RET", "SIM", "TID", "ARG", "PD", "PGH", "PL", "TRY", "RUF"]
-ignore = ["ANN401", "E501", "RET504",
-          "ARG001", "TRY003", "PLR2004",
-          "EM102", "PLR0913", "B008",
-          "TRY400", "RUF200", "N815",
-          "G004", "EM101", "PLR0912",
-          "PLR0915", "ANN003"]
+select = [
+  "E","F","B","I","N","UP","ANN","PTH","FBT","A","COM","C4","DTZ",
+  "T10","EM","ISC","ICN","G","PIE","PYI","PT","Q","RET","SIM","TID",
+  "ARG","PD","PGH","PL","TRY","RUF"
+]
+ignore = [
+  "ANN401","E501","RET504",
+  "ARG001","TRY003","PLR2004",
+  "EM102","PLR0913","B008",
+  "TRY400","RUF200","N815",
+  "G004","EM101","PLR0912",
+  "PLR0915","ANN003"
+]
 
 [tool.mypy]
 python_version = "3.12"
@@ -118,65 +125,34 @@ python_classes = "Test*"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::FutureWarning",
+  "ignore::DeprecationWarning",
+  "ignore::FutureWarning"
 ]
 
-# New tox configuration
+# ---------- native tox-4 configuration ----------
 [tool.tox]
-legacy_tox_ini = """
-[tox]
-env_list = py312, lint, typecheck, coverage
-isolated_build = True
+min_version = "4.7"
+requires = ["tox-poetry-installer[poetry]>=1.0.0b1"]
+envlist = ["py312", "lint", "typecheck", "coverage"]
 
-[testenv]
-description = run the tests with pytest
-package = wheel
-wheel_build_env = .pkg
-deps =
-    pytest>=8.0.0
-    pytest-cov>=4.1.0
-    pytest-asyncio>=0.21.0
-commands =
-    pytest {tty:--color=yes} {posargs:tests}
-basepython = python3.12
+[tool.tox.envs]
+basepython = "python3.12"
+poetry_dep_groups = ["dev"]     # install main + dev everywhere
 
-[testenv:lint]
-description = run linters
+[tool.tox.envs.py312]
+description = "Run unit tests"
+commands = ["pytest {tty:--color=yes} {posargs:tests}"]
+
+[tool.tox.envs.lint]
+description = "Static code-style checks"
 skip_install = true
-deps =
-    ruff>=0.2.2
-commands =
-    ruff check {posargs:.}
-basepython = python3.12
+deps = ["ruff>=0.2.2"]
+commands = ["ruff check ."]
 
-[testenv:typecheck]
-description = run type checks
-# Install the package itself with dev dependencies for mypy
-deps =
-    .[dev]  
-    mypy>=1.8.0
-commands =
-    mypy {posargs:app tests}
-basepython = python3.12
-    
-[testenv:coverage]
-description = run tests with coverage reporting
-deps =
-    pytest>=8.0.0
-    pytest-cov>=4.1.0
-    pytest-asyncio>=0.21.0
-commands =
-    pytest --cov=app --cov-report=term-missing --cov-report=xml --cov-report=html {posargs:tests}
-basepython = python3.12
-    
-[testenv:specific]
-description = run specific tests with custom options
-deps =
-    pytest>=8.0.0
-    pytest-asyncio>=0.21.0
-    pytest-cov>=4.1.0
-commands =
-    pytest {posargs}
-basepython = python3.12
-"""
+[tool.tox.envs.typecheck]
+description = "Mypy static type checking"
+commands = ["mypy app tests"]
+
+[tool.tox.envs.coverage]
+description = "Run tests with coverage"
+commands = ["pytest --cov=app --cov-report=term-missing --cov-report=xml --cov-report=html {posargs:tests}"]
