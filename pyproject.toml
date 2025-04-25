@@ -80,6 +80,7 @@ pre-commit = ">=3.6.0"
 
 [tool.poetry.scripts]
 serve = "gunicorn.app.wsgiapp:run"
+debug_api = "debug_api:main"
 
 [tool.ruff]
 target-version = "py312"

@@ -5,8 +5,8 @@ import warnings
 
 import uvicorn
 
+from app import create_app
 from app.config import get_settings
-from app.main import create_app
 
 settings = get_settings()
 

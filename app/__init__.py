@@ -15,3 +15,19 @@ def _get_version() -> str:
     return str(pyproject.get("project", {}).get("version", "0.0.0"))
 
 __version__ = _get_version()
+
+
+try:
+    # Try to load logging configuration from file.
+    # This configures logging not just for the app but also for all other modules.
+    import logging.config
+    logging.config.fileConfig("logging.conf", disable_existing_loggers=False)
+except Exception as e:
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    logging.warning(f"Failed to load logging configuration. Error: {e}. "
+                    "Using default logging settings with DEBUG level.")
+
+from app.main import create_app  # noqa: E402
+
+__all__ = ["__version__", "create_app"]

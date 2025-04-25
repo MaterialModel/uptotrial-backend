@@ -23,7 +23,7 @@ def fetch_with_urllib(url: str, timeout: int = 30) -> str | None:
     """
     
     try:
-        logger.debug(f"Attempting to fetch data from: {url}")
+        logger.info(f"Attempting to fetch data from: {url}")
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=timeout) as response:
             status_code = response.getcode()

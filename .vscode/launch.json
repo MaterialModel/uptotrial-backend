@@ -4,20 +4,12 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
-        {
-            "name": "Debug UpToTrial Chat CLI",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/uptotrial.py",
-            "args": ["chat"],
-            "console": "integratedTerminal"
-        },
         {
             "name": "Debug UpToTrial Chat API",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/debug_api.py",
+            "cwd": "${workspaceFolder}",
+            "module": "debug_api",
             "console": "integratedTerminal"
         }
     ]

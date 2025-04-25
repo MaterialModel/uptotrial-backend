@@ -28,7 +28,7 @@ Key features:
 ### Prerequisites
 
 - Python 3.12+
-- uv (https://github.com/astral-sh/uv)
+- Poetry (https://python-poetry.org/docs/#installation)
 
 ### Installation
 
@@ -38,17 +38,14 @@ git clone https://github.com/yourusername/uptotrial-backend.git
 cd uptotrial-backend
 ```
 
-2. Install `uv`
-
+2. Install dependencies with Poetry
 ```bash
-pip install uv
+poetry install --with dev
 ```
 
-3. Create a virtual environment and install dependencies
+3. Activate the virtual environment
 ```bash
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[dev]"
+env activate
 ```
 
 ### Configuration
@@ -58,19 +55,17 @@ The application uses environment variables for configuration. Create a `.env` fi
 ### CLI
 
 ```bash
-
- python ./uptotrial.py chat
-
- ```
+poetry run ./uptotrial.py chat
+```
 
 ### Running the Application
 
 ```bash
 # Development server with auto-reload
-uvicorn app.main:app --reload
+poetry run uvicorn app.main:app --reload
 
 # Production server
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
  
 ## API Documentation
@@ -98,25 +93,25 @@ The health check endpoint is exempt from this requirement.
 
 ```bash
 # Run all tests, linting, and type checking
-tox
+poetry run tox
 
 # Run only linting
-tox -e lint
+poetry run tox -e lint
 
 # Run only type checking
-tox -e typecheck 
+poetry run tox -e typecheck 
 
 # Run tests with coverage reporting
-tox -e coverage
+poetry run tox -e coverage
 
 # Run specific tests
-tox -e specific -- tests/unit/test_middleware/test_correlation_id.py
+poetry run tox -e specific -- tests/unit/test_middleware/test_correlation_id.py
 ```
 
 ### Auto-fixing with ruff
 
 ```
-ruff check --fix .
+poetry run ruff check --fix .
 ```
 
 ### Database Migrations
@@ -125,10 +120,10 @@ The project uses Alembic for database schema migrations:
 
 ```bash
 # Generate migration
-alembic revision --autogenerate -m "Description of changes"
+poetry run alembic revision --autogenerate -m "Description of changes"
 
 # Apply migrations
-alembic upgrade head
+poetry run alembic upgrade head
 ```
 
 ## License
