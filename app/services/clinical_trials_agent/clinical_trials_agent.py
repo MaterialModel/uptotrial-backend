@@ -179,11 +179,6 @@ def make_sse_event(key: str, value: str) -> str:
     """
     # Escape XML entities to prevent parsing issues
     escaped_value = (value
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-        .replace("'", "&apos;")
         .replace("openai.com", "uptotrial.com")) 
     return f"<event><key>{key}</key><value>{escaped_value}</value></event>"
 
@@ -251,25 +246,32 @@ async def post_turn_streamed(session_uuid: str | None,
                     elif (chunk.data.type == "response.output_item.added"
                           and chunk.data.item.type == "function_call"
                           and chunk.data.item.name == "list_studies"):
-                        item_name = "\n> Searching ClinicalTrials.gov for studies...\n\n"
+                        item_name = "<tool>Searching ClinicalTrials.gov for studies...</tool>"
                         last_function_call = "list_studies"
                         yield make_sse_event("data", item_name)
                         chunks.append(item_name)
                     elif (chunk.data.type == "response.output_item.added"
                           and chunk.data.item.type == "function_call"
                           and chunk.data.item.name == "fetch_study"):
-                        item_name = "\n> Fetching a study from ClinicalTrials.gov...\n\n"
+                        item_name = "<tool>Fetching a study from ClinicalTrials.gov...</tool>"
                         last_function_call = "fetch_study"
+                        yield make_sse_event("data", item_name)
+                        chunks.append(item_name)
+                    elif (chunk.data.type == "response.output_item.added"
+                          and chunk.data.item.type == "function_call"
+                          and chunk.data.item.name == "search_places"):
+                        item_name = "<tool>Searching locations...</tool>"
+                        last_function_call = "search_places"
                         yield make_sse_event("data", item_name)
                         chunks.append(item_name)
                     elif (chunk.data.type == "response.function_call_arguments.delta"):
                         pass
                     elif (chunk.data.type == "response.function_call_arguments.done"):
-                        item_name = f"\n> {last_function_call}({chunk.data.arguments})\n\n"
+                        item_name = f"<tool_details>{last_function_call}({chunk.data.arguments})</tool_details>"
                         yield make_sse_event("data", item_name)
                         chunks.append(item_name)
                     elif chunk.data.type == "response.web_search_call.searching":
-                        item_name = "\n> Searching the web for more information...\n\n"
+                        item_name = "<tool>Searching the web for more information...</tool>"
                         yield make_sse_event("data", item_name)
                         chunks.append(item_name)
                     else:
