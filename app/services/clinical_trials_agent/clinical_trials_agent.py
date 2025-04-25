@@ -233,6 +233,7 @@ async def post_turn_streamed(session_uuid: str | None,
 
     yield make_sse_event("session_uuid", session_uuid)
     yield make_sse_event("data", '<response>')
+    chunks.append('<response>')
 
     with trace("Clinical Trials Agent", trace_id=session.openai_trace_id) as trace_obj:
         streamed_response = Runner.run_streamed(agent, messages)  # type: ignore[arg-type]
@@ -286,6 +287,7 @@ async def post_turn_streamed(session_uuid: str | None,
             return
 
     yield make_sse_event("data", '</response>')
+    chunks.append('</response>')
     output_message = {"role": "assistant", "content": "".join(chunks)}
     await session.add_turn(text, output_message, correlation_id, db)
     yield "event: end_ok"
