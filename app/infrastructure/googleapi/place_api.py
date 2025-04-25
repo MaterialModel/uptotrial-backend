@@ -14,7 +14,7 @@ T = TypeVar("T", bound=dict | list)
 
 def recursive_remove_key(d: T, keys: list[str]) -> T:
     if isinstance(d, dict):
-        keys_to_remove = [k for k in d.keys() if any(key in k for key in keys)]
+        keys_to_remove = [k for k in d if any(key in k for key in keys)]
         for k in keys_to_remove:
             del d[k]
         for v in d.values():

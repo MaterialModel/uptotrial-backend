@@ -10,7 +10,7 @@ class JinjaTemplateManager:
         self.env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(template_dir))
 
-    def render(self, template_name: str, **kwargs: dict[str, Any]) -> str:
+    def render(self, template_name: str, **kwargs: Any) -> str:
         """ Render a template with the given arguments"""
 
         template = self.env.get_template(template_name)

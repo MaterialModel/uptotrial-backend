@@ -258,7 +258,7 @@ async def list_studies(
     post_filter_geo = None
 
     if sort_fields:
-        sort_strings: list[str | None] = [f"{s.field}:{s.direction}" for s in sort_fields]
+        sort_strings: list[str] | None = [f"{s.field}:{s.direction}" for s in sort_fields]
     else:
         sort_strings = None
 

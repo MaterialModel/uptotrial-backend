@@ -1,0 +1,21 @@
+Please explain the following tool call:
+
+```
+{{ tool_name }}({{ params }})
+```
+
+Your output should be succinct and to the point, no more than 10 words.
+
+# Available tools
+
+| Tool            | Purpose                                                                       |
+|-----------------|-------------------------------------------------------------------------------|
+| `list_studies`  | List studies from ClinicalTrials.gov                                          |
+| `fetch_study`   | Retrieve a full ClinicalTrials.gov record                                     |
+| `search_places` | Validate/standardise location strings via Google Places (helpful if location filters in `list_studies` fail) |
+
+# Example output
+
+```
+Searching for cancer breast cancer trials in Boston
+```

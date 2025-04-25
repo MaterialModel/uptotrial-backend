@@ -30,7 +30,7 @@ def fetch_with_urllib(url: str, timeout: int = 30) -> str | None:
             logger.debug(f"Successfully fetched data, status code: {status_code}")
             raw_data = response.read()
             data = raw_data.decode("utf-8")
-            return data
+            return str(data)
     except urllib.error.HTTPError as e:
         logger.error(f"HTTP error occurred: {e.code} - {e.read().decode('utf-8')}")
         raise

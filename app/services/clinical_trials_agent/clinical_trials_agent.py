@@ -23,9 +23,10 @@ from app.infrastructure.clinical_trials_gov.api_requests import (
     fetch_study,
     list_studies,
 )
-from app.infrastructure.googleapi.place_api import search_places
 from app.infrastructure.database.models import DialogueTurn, Session
-from app.services.clinical_trials_agent import GPT_41_MINI, template_manager
+from app.infrastructure.googleapi.place_api import search_places
+from app.infrastructure.openai import GPT_41_MINI, stream_response_text
+from app.services.clinical_trials_agent import template_manager
 
 ToolType = FunctionTool | FileSearchTool | WebSearchTool | ComputerTool
 
@@ -53,7 +54,7 @@ def get_agent() -> Agent:
     ctg_tools = [
         list_studies,
         fetch_study,
-        search_places
+        search_places,
     ]
 
     hosted_tools = [
@@ -182,6 +183,14 @@ def make_sse_event(key: str, value: str) -> str:
         .replace("openai.com", "uptotrial.com")) 
     return f"<event><key>{key}</key><value>{escaped_value}</value></event>"
 
+
+def stream_tool_explanation(tool_name: str, params: str) -> AsyncGenerator[str, None]:
+
+    prompt = template_manager.render("tool_explanation.jinja", tool_name=tool_name, params=params)
+
+    return stream_response_text(prompt)
+
+
 async def post_turn_streamed(session_uuid: str | None,
                              text: str,
                              correlation_id: str,
@@ -232,8 +241,8 @@ async def post_turn_streamed(session_uuid: str | None,
     chunks: list[str] = []
 
     yield make_sse_event("session_uuid", session_uuid)
-    yield make_sse_event("data", '<response>')
-    chunks.append('<response>')
+    yield make_sse_event("data", "<response>")
+    chunks.append("<response>")
 
     with trace("Clinical Trials Agent", trace_id=session.openai_trace_id) as trace_obj:
         streamed_response = Runner.run_streamed(agent, messages)  # type: ignore[arg-type]
@@ -269,9 +278,13 @@ async def post_turn_streamed(session_uuid: str | None,
                     elif (chunk.data.type == "response.function_call_arguments.delta"):
                         pass
                     elif (chunk.data.type == "response.function_call_arguments.done"):
-                        item_name = f"<tool_details>{last_function_call}({chunk.data.arguments})</tool_details>"
-                        yield make_sse_event("data", item_name)
-                        chunks.append(item_name)
+                        yield make_sse_event("data", "<tool_details>")
+                        chunks.append("<tool_details>")
+                        async for sub_chunk in stream_tool_explanation(last_function_call, chunk.data.arguments):
+                            yield make_sse_event("data", sub_chunk)
+                            chunks.append(sub_chunk)
+                        yield make_sse_event("data", "</tool_details>")
+                        chunks.append("</tool_details>")
                     elif chunk.data.type == "response.web_search_call.searching":
                         item_name = "<tool>Searching the web for more information...</tool>"
                         yield make_sse_event("data", item_name)
@@ -286,8 +299,8 @@ async def post_turn_streamed(session_uuid: str | None,
             yield make_sse_event("event", "end_error")
             return
 
-    yield make_sse_event("data", '</response>')
-    chunks.append('</response>')
+    yield make_sse_event("data", "</response>")
+    chunks.append("</response>")
     output_message = {"role": "assistant", "content": "".join(chunks)}
     await session.add_turn(text, output_message, correlation_id, db)
     yield "event: end_ok"
