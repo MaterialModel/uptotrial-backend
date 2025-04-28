@@ -25,7 +25,7 @@ from app.infrastructure.clinical_trials_gov.api_requests import (
 )
 from app.infrastructure.database.models import DialogueTurn, Session
 from app.infrastructure.googleapi.place_api import search_places
-from app.infrastructure.openai import GPT_41_MINI, stream_response_text
+from app.infrastructure.openai import GPT_41, stream_response_text
 from app.services.clinical_trials_agent import template_manager
 
 ToolType = FunctionTool | FileSearchTool | WebSearchTool | ComputerTool
@@ -66,7 +66,7 @@ def get_agent() -> Agent:
     return Agent(
         name="Clinical Trials Agent",
         instructions=agent_system_prompt,
-        model=GPT_41_MINI,
+        model=GPT_41,
         tools=cast(list[ToolType], ctg_tools + hosted_tools),
     )
 
@@ -255,44 +255,21 @@ async def post_turn_streamed(session_uuid: str | None,
                         yield make_sse_event("data", str(chunk.data.delta))
                         chunks.append(chunk.data.delta)
                     elif (chunk.data.type == "response.output_item.added"
-                          and chunk.data.item.type == "function_call"
-                          and chunk.data.item.name == "list_studies"):
-                        item_name = "<tool>Searching ClinicalTrials.gov for studies...</tool>"
-                        last_function_call = "list_studies"
-                        yield make_sse_event("data", item_name)
-                        chunks.append(item_name)
-                    elif (chunk.data.type == "response.output_item.added"
-                          and chunk.data.item.type == "function_call"
-                          and chunk.data.item.name == "fetch_study"):
-                        item_name = "<tool>Fetching a study from ClinicalTrials.gov...</tool>"
-                        last_function_call = "fetch_study"
-                        yield make_sse_event("data", item_name)
-                        chunks.append(item_name)
-                    elif (chunk.data.type == "response.output_item.added"
-                          and chunk.data.item.type == "function_call"
-                          and chunk.data.item.name == "search_places"):
-                        item_name = "<tool>Searching locations...</tool>"
-                        last_function_call = "search_places"
-                        yield make_sse_event("data", item_name)
-                        chunks.append(item_name)
-                    elif (chunk.data.type == "response.function_call_arguments.delta"):
-                        pass
+                          and chunk.data.item.type == "function_call"):
+                        last_function_call = chunk.data.item.name
                     elif (chunk.data.type == "response.function_call_arguments.done"):
-                        yield make_sse_event("data", "<tool_details>")
-                        chunks.append("<tool_details>")
+                        yield make_sse_event("data", "<tool>")
+                        chunks.append("<tool>")
                         async for sub_chunk in stream_tool_explanation(last_function_call, chunk.data.arguments):
                             yield make_sse_event("data", sub_chunk)
                             chunks.append(sub_chunk)
-                        yield make_sse_event("data", "</tool_details>")
-                        chunks.append("</tool_details>")
+                        yield make_sse_event("data", "</tool>")
+                        chunks.append("</tool>")
                     elif chunk.data.type == "response.web_search_call.searching":
                         item_name = "<tool>Searching the web for more information...</tool>"
                         yield make_sse_event("data", item_name)
                         chunks.append(item_name)
-                    else:
-                        pass
-                else:
-                    pass
+
         except Exception as e:
             yield make_sse_event("event", "error")
             yield make_sse_event("data", str(e))
