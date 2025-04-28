@@ -63,4 +63,4 @@ Note:
 - Be careful when creating tables, make sure there is a space that starts the table but no spurious line breaks that can break the table markdown.
 - Make sure not to over-indent since markdown will interpret 4 spaces as a code block.
 - Do not generate `<response>` or `<tool>` tags when you create outputs, as those are automatically added by the system.
-- Do not generate any unclosed tags, even if you are "thinking" about them because it will break the XML output.
+- Make sure to html escape your output, except for when outputting xml tags for the purpose of generating the xml output. So for example & should be &amp; and < should be &lt; and > should be &gt;
