@@ -1,6 +1,7 @@
 import logging
 import urllib.error
 import urllib.request
+import html
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ def fetch_with_urllib(url: str, timeout: int = 30) -> str | None:
             logger.debug(f"Successfully fetched data, status code: {status_code}")
             raw_data = response.read()
             data = raw_data.decode("utf-8")
-            return str(data)
+            return html.escape(data)
     except urllib.error.HTTPError as e:
         logger.error(f"HTTP error occurred: {e.code} - {e.read().decode('utf-8')}")
         raise
