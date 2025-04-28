@@ -252,8 +252,10 @@ async def post_turn_streamed(session_uuid: str | None,
             async for chunk in streamed_response.stream_events():
                 if chunk.type == "raw_response_event":
                     if chunk.data.type == "response.output_text.delta":
-                        yield make_sse_event("data", str(chunk.data.delta))
-                        chunks.append(chunk.data.delta)
+                        ch = chunk.data.delta
+                        ch = ch.replace("```", "")
+                        yield make_sse_event("data", ch)
+                        chunks.append(ch)
                     elif (chunk.data.type == "response.output_item.added"
                           and chunk.data.item.type == "function_call"):
                         last_function_call = chunk.data.item.name

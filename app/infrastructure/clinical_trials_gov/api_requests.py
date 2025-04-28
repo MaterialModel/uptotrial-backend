@@ -35,6 +35,14 @@ Status = Literal[
     "UNKNOWN",
 ]
 
+Phase = Literal["NA", "EARLY_PHASE1", "PHASE1", "PHASE2", "PHASE3", "PHASE4"]
+
+StudyType = Literal["EXPANDED_ACCESS", "INTERVENTIONAL", "OBSERVATIONAL"]
+
+Sex = Literal["FEMALE", "MALE", "ALL"]
+
+StandardAge = Literal["CHILD", "ADULT", "OLDER_ADULT"]
+
 # Expanded list of common/useful fields based on CTG documentation
 AllowedField = Literal[
     # Identification
@@ -148,6 +156,39 @@ class SortField(BaseModel):
     field: AllowedField
     direction: SortDirection
 
+# New Pydantic models for more semantic parameter grouping
+class DiseaseInfo(BaseModel):
+    """Information about a disease/condition and its synonyms."""
+    name: str
+    synonyms: list[str] | None = None
+
+class SubtypeInfo(BaseModel):
+    """Information about disease subtypes (mutations, histology, stage, etc.)."""
+    name: str
+    synonyms: list[str] | None = None
+
+class InterventionInfo(BaseModel):
+    """Information about an intervention/treatment and its synonyms."""
+    name: str
+    synonyms: list[str] | None = None
+
+# New helper function for creating Essie syntax queries
+def _or_block(term: str, synonyms: list[str] | None = None) -> str:
+    """Return `(foo OR "bar baz")` in Essie syntax.
+    
+    Args:
+        term: Main search term
+        synonyms: Optional list of synonyms or alternative terms
+        
+    Returns:
+        Essie syntax query string with terms combined with OR
+    """
+    if not term:
+        return ""
+    toks = [term] + (synonyms or [])
+    toks = [f'"{t}"' if " " in t else t for t in toks]
+    return f"({' OR '.join(toks)})"
+
 
 # Helper function
 def _build_ctg_url(base_url: str, path: str, params: dict[str, Any] | None) -> str:
@@ -217,51 +258,140 @@ def _build_ctg_url(base_url: str, path: str, params: dict[str, Any] | None) -> s
 # --- API Functions ---
 @function_tool
 async def list_studies(
-    query_cond: Annotated[str | None, "Condition/disease query (Essie syntax)"],
-    query_term: Annotated[str | None, "Other terms query (Essie syntax)"],
-    query_locn: Annotated[str | None, "Location terms query (Essie syntax)"],
+    # Semantic disease/condition parameters
+    disease: Annotated[DiseaseInfo | None, "Information about the disease/condition to search for"],
+    subtype: Annotated[SubtypeInfo | None, "Information about disease subtype (mutations, histology, stage, etc.)"],
+    intervention: Annotated[InterventionInfo | None, "Information about the intervention/treatment to search for"],
+    location: Annotated[str | None, "Geographic location for the study (city, state, country)"],
+    
+    # Study characteristics using Literals for validation
+    phases: Annotated[list[Phase] | None, "List of study phases to include"],
+    study_types: Annotated[list[StudyType] | None, "List of study types to include"],
+    statuses: Annotated[list[Status] | None, "List of study statuses to filter by"],
+    
+    # Demographic filters using Literals for validation
+    sexes: Annotated[list[Sex] | None, "List of sex categories to include"],
+    standard_ages: Annotated[list[StandardAge] | None, "List of age groups to include"],
+    
+    # Results filter
+    with_results: Annotated[bool | None, "Filter to studies with posted results"],
+    
+    # Additional query parameters (preserved from original)
     query_titles: Annotated[str | None, "Title/acronym query (Essie syntax)"],
-    query_intr: Annotated[str | None, "Intervention/treatment query (Essie syntax)"],
     query_outc: Annotated[str | None, "Outcome measure query (Essie syntax)"],
     query_spons: Annotated[str | None, "Sponsor/collaborator query (Essie syntax)"],
     query_lead: Annotated[str | None, "Lead sponsor name query (Essie syntax)"],
     query_id: Annotated[str | None, "Study IDs query (Essie syntax)"],
     query_patient: Annotated[str | None, "Patient search query (Essie syntax)"],
-    filter_overall_status: Annotated[list[Status] | None, "List of statuses to filter by"],
+    
+    # ID filtering
     filter_ids: Annotated[list[str] | None, "List of NCT IDs to filter by"],
-    filter_advanced: Annotated[str | None, "Advanced filter query (Essie syntax)"],
     filter_synonyms: Annotated[list[str] | None, "List of synonym filters ('area:id')"],
+    
+    # Geographic filters
+    filter_geo: Annotated[str | None, "Geo-distance filter (e.g., 'distance(lat,lon,radius)')"],
+    geo_decay: Annotated[str | None, "Geo decay function string"],
+    
+    # Post-filtering parameters
     post_filter_overall_status: Annotated[list[Status] | None, "Post-aggregation status filter"],
+    post_filter_geo: Annotated[str | None, "Post-aggregation geo filter"],
     post_filter_ids: Annotated[list[str] | None, "Post-aggregation NCT ID filter"],
     post_filter_advanced: Annotated[str | None, "Post-aggregation advanced filter"],
     post_filter_synonyms: Annotated[list[str] | None, "Post-aggregation synonym filter"],
+    
+    # Other parameters
     agg_filters: Annotated[str | None, "Aggregation filters string"],
-    geo_decay: Annotated[str | None, "Geo decay function string"],
     fields: Annotated[list[AllowedField] | None, "List of specific fields to return (e.g., ['NCTId', 'BriefTitle', 'OverallStatus']). Returns default set if None"],
-    sort_fields: Annotated[list[SortField] | None, "List of fields to sort by. Format: 'FieldName:direction' (e.g., 'LastUpdatePostDate:desc')"],
+    sort_fields: Annotated[list[SortField] | None, "List of fields to sort by"],
     count_total: Annotated[bool | None, "Whether to return total count"],
     page_size: Annotated[int | None, "Number of studies per page. Defaults to 10. Max 1000"],
     page_token: Annotated[str | None, "Token for retrieving the next page"],
 ) -> str | None:
     """Returns data of studies matching query and filter parameters.
-
-    Assumes 'json' format is used or fetch_with_urllib can handle others.
-    See: https://clinicaltrials.gov/api/v2/studies (GET)
-
-    Status can be ACTIVE_NOT_RECRUITING | COMPLETED | ENROLLING_BY_INVITATION | NOT_YET_RECRUITING | RECRUITING | SUSPENDED | TERMINATED | WITHDRAWN | AVAILABLE | NO_LONGER_AVAILABLE | TEMPORARILY_NOT_AVAILABLE | APPROVED_FOR_MARKETING | WITHHELD | UNKNOWN
+    
+    Provides semantically meaningful parameters (disease, subtype, intervention)
+    while preserving the original API parameters for advanced use cases.
+    
+    Examples:
+        To search for "Phase 2 or 3 IDH mutant ICC immunotherapy trials for adults":
+        
+        disease=DiseaseInfo(
+            name="Intrahepatic Cholangiocarcinoma",
+            synonyms=["biliary cancer", "cholangiocarcinoma"]
+        ),
+        subtype=SubtypeInfo(
+            name="IDH mutant",
+            synonyms=["IDH1 mutant", "IDH2 mutant"]
+        ),
+        intervention=InterventionInfo(
+            name="immunotherapy",
+            synonyms=["immune checkpoint inhibitor", "pembrolizumab"]
+        ),
+        phases=["PHASE2", "PHASE3"],
+        standard_ages=["ADULT"]
 
     Returns:
         A PagedStudies object containing the list of studies and pagination info, or None on error.
     """
     path = "/studies"
-    filter_geo = None
-    post_filter_geo = None
-
+    
+    # Build query parameters from semantic parameters
+    query_cond = None
+    query_term = None
+    query_locn = location
+    query_intr = None
+    filter_advanced = None
+    
+    # Convert disease info to condition query
+    if disease:
+        query_cond = _or_block(disease.name, disease.synonyms)
+    
+    # Build query term from subtype and intervention
+    query_components = []
+    
+    if subtype:
+        query_components.append(_or_block(subtype.name, subtype.synonyms))
+    
+    if intervention:
+        query_intr = _or_block(intervention.name, intervention.synonyms)
+    
+    if query_components:
+        query_term = " AND ".join(query_components)
+    
+    # Build advanced filter components for study characteristics
+    adv_chunks = []
+    
+    if phases:
+        adv_chunks.append("(" + " OR ".join(f"AREA[Phase]{p}" for p in phases) + ")")
+    
+    if sexes:
+        adv_chunks.append("(" + " OR ".join(f"AREA[Sex]{s}" for s in sexes) + ")")
+    
+    if standard_ages:
+        adv_chunks.append("(" + " OR ".join(f"AREA[StdAge]{a}" for a in standard_ages) + ")")
+    
+    if study_types:
+        adv_chunks.append("(" + " OR ".join(f"AREA[StudyType]{st}" for st in study_types) + ")")
+    
+    # Combine advanced filter components
+    if adv_chunks:
+        filter_advanced = " AND ".join(adv_chunks)
+    
+    # Handle with_results filter (studies that have posted results)
+    if with_results:
+        if agg_filters:
+            agg_filters = f"{agg_filters},results:with"
+        else:
+            agg_filters = "results:with"
+    
+    # Format sort fields
     if sort_fields:
-        sort_strings: list[str] | None = [f"{s.field}:{s.direction}" for s in sort_fields]
+        sort_strings = [f"{s.field}:{s.direction}" for s in sort_fields]
     else:
-        sort_strings = None
-
+        # Default to relevance and enrollment count
+        sort_strings = ["@relevance", "EnrollmentCount:desc"]
+    
+    # Build final parameters
     params = {
         "format": "json",
         "markupFormat": "markdown",
@@ -275,7 +405,7 @@ async def list_studies(
         "query.lead": query_lead,
         "query.id": query_id,
         "query.patient": query_patient,
-        "filter.overallStatus": filter_overall_status,
+        "filter.overallStatus": statuses,
         "filter.geo": filter_geo,
         "filter.ids": filter_ids,
         "filter.advanced": filter_advanced,

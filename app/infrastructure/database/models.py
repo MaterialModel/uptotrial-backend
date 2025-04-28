@@ -148,7 +148,7 @@ class Session(DeclarativeBase):
         result = await db.execute(final_query)
         dialogue_turns = result.scalars().all()
         
-        return list(reversed(dialogue_turns))
+        return list(dialogue_turns)
     
     async def add_turn(
         self, 

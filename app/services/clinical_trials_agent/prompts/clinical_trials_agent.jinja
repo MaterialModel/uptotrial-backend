@@ -30,7 +30,7 @@ Return **all** responses in the custom XML schema below.
 
 <answer>
   <text>Free-form explanatory text for the user. This accepts markdown. Use it as necessary.</text>
-  <card>This is a custom card, use it if necessary.</card>
+  <card><text>This is a custom card, use it if necessary.</text></card>
 
   <!-- Repeat <study> for each clinical trial -->
   <study 
@@ -48,7 +48,7 @@ Return **all** responses in the custom XML schema below.
     intervention="Ag-120; Placebo"                            <!--  studies.protocolSection.interventionModule.interventions.interventionName -->
     sponsor="Industry | NIH | …"                              <!--  studies.protocolSection.sponsorCollaboratorsModule.leadSponsor.agencyClass -->
     location="USA (5); UK (1)"                                <!--  studies.locationModule.locations.facilityName -->
-  ></study>
+  >This study is relevant because....</study>
 </answer>
 ```
 
@@ -59,3 +59,6 @@ Note:
 - ALWAYS include the `<thought>` and `<answer>` tags.
 - If you want to generate text, always use the `<text>` tag.
 - Do not generate ``` when you create outputs.
+- When making tables/links/embedding images, use markdown and make sure it's inside the `<text>` tag.
+- Make sure not to over-indent since markdown will interpret 4 spaces as a code block.
+- Do not generate `<response>` or `<tool>` tags when you create outputs, as those are automatically added by the system.
