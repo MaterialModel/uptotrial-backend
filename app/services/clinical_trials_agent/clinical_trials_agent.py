@@ -263,6 +263,7 @@ async def post_turn_streamed(session_uuid: str | None,
                         yield make_sse_event("data", "<tool>")
                         chunks.append("<tool>")
                         async for sub_chunk in stream_tool_explanation(last_function_call, chunk.data.arguments):
+                            sub_chunk = sub_chunk.replace("```", "")
                             yield make_sse_event("data", sub_chunk)
                             chunks.append(sub_chunk)
                         yield make_sse_event("data", "</tool>")
