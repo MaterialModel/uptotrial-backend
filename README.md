@@ -1,6 +1,10 @@
 # UpToTrial Backend
 
+See deployed version: https://uptotrial.com
+
 FastAPI-based API for clinical trials search using natural language processing.
+
+Apache 2.0 License.
 
 ## Project Overview
 
